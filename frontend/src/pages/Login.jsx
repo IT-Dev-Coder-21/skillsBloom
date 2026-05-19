@@ -35,7 +35,7 @@ function Login() {
       : `${API_BASE_URL}/login`;
 
     try {
-      const res = await fetch(url, {
+      const res = await fetch("https://skillsbloom-api.onrender.com/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
