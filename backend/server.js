@@ -1,4 +1,4 @@
-console.log("SERVER FILE IS RUNNING");
+console.log("SERVER FILE IS RUNNING IN PRODUCTION MODE");
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
@@ -6,21 +6,24 @@ const nodemailer = require("nodemailer");
 
 const app = express();
 
-// ✅ CORS POLICY CONFIGURATION
+// ✅ FIX 1: DYNAMIC CORS POLICY CONFIGURATION
+// This allows your production Vercel frontend link to communicate with your backend securely!
 app.use(cors({
-  origin: "http://localhost:5173", // Points to your Vite frontend development server
+  origin: true, // Dynamically accepts your live deployed domains
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 
 app.use(express.json());
 
-// ✅ DATABASE CONNECTION
+// ✅ FIX 2: ENVIRONMENT-DRIVEN DATABASE CONNECTION
+// When on Render, it will use your secure live cloud database credentials.
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "JANE2005",
-  database: "skillsbloom"
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "JANE2005",
+  database: process.env.DB_NAME || "skillsbloom",
+  port: process.env.DB_PORT || 3306
 });
 
 db.connect((err) => {
@@ -73,7 +76,6 @@ app.get("/attendance", (req, res) => {
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
   
-  // ✅ FIXED CASE SENSITIVITY: Checks lowercase directly to avoid rule bypasses
   const normalizedRole = role ? role.toLowerCase() : "student";
   const isApproved = normalizedRole === 'mentor' ? 0 : 1; 
 
@@ -82,7 +84,7 @@ app.post("/register", (req, res) => {
   db.query(sql, [name, email, password, normalizedRole, isApproved], (err, result) => {
     if (err) {
       console.log("❌ REGISTRATION DATABASE ERROR:", err.message);
-      return res.json({ success: false, message: "Registration failed", errorDetails: err.message });
+      return res.status(500).json({ success: false, message: "Registration failed", errorDetails: err.message });
     }
     
     if (normalizedRole === 'mentor') {
@@ -128,7 +130,6 @@ app.post("/login", (req, res) => {
 });
 
 // ✅ UNIFIED ENTIRE BOOKINGS/SESSIONS DATA DISPATCH
-// Both endpoints now target the exact same table to make sure components stay completely in sync.
 app.get("/bookings", (req, res) => {
   const sql = "SELECT id, studentName, studentEmail, mentorName, date, time, objective FROM bookings ORDER BY id DESC";
   db.query(sql, (err, result) => {
@@ -141,7 +142,6 @@ app.get("/bookings", (req, res) => {
 });
 
 app.get("/sessions", (req, res) => {
-  // ✅ Forwarding directly to bookings so both pages see the same sync array
   const sql = "SELECT id, studentName, studentEmail, mentorName, date, time, objective FROM bookings ORDER BY id DESC";
   db.query(sql, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -283,6 +283,8 @@ app.post("/admin/approve-mentor", (req, res) => {
   });
 });
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
+// ✅ FIX 3: DYNAMIC ASSIGNMENT OF PRODUCTION PORT
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
