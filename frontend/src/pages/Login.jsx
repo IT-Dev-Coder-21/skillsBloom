@@ -1,3 +1,4 @@
+import API_BASE_URL from "./config";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../index.css";
@@ -5,6 +6,9 @@ import "../index.css";
 function Login() {
   const [isRegister, setIsRegister] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // ✅ STATUS BANNER STATE: Replaces browser alerts with inline dynamic UI notifications
+  const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
 
   const [form, setForm] = useState({
     name: "",
@@ -21,13 +25,14 @@ function Login() {
 
   const handleSubmit = async () => {
     if (!form.email || !form.password || (isRegister && !form.name)) {
-      alert("Fill all fields");
+      setStatusMessage({ text: "Please fill in all required fields! ⚠️", type: "error" });
       return;
     }
 
+    // ✅ FIX: Replaced hardcoded localhost strings with dynamic API_BASE_URL variable
     const url = isRegister
-      ? "http://localhost:5000/register"
-      : "http://localhost:5000/login";
+      ? `${API_BASE_URL}/register`
+      : `${API_BASE_URL}/login`;
 
     try {
       const res = await fetch(url, {
@@ -41,36 +46,66 @@ function Login() {
       const data = await res.json();
 
       if (data.success) {
-        // SAVE USER
-        localStorage.setItem("user", JSON.stringify(data.user));
+        setStatusMessage({ text: `${data.message} 🚀`, type: "success" });
 
-        // RESET FORM
-        setForm({
-          name: "",
-          email: "",
-          password: "",
-          role: "student"
-        });
-
-        // 🔥 ROLE-BASED REDIRECT (MAIN FIX)
-        const role = data.user.role;
-
-        if (role === "student") {
-          navigate("/student-dashboard");
-        } else if (role === "mentor") {
-          navigate("/mentor-dashboard");
-        } else {
-          navigate("/"); // fallback
+        // If it was registration and they are an unapproved mentor, clear up and stop here
+        if (isRegister && (form.role === "mentor" || form.role === "Mentor")) {
+          setTimeout(() => {
+            setForm({ name: "", email: "", password: "", role: "student" });
+            setIsRegister(false); 
+            setStatusMessage({ text: "", type: "" });
+          }, 2500);
+          return;
         }
+
+        const loggedInUser = data.user;
         
+        if (loggedInUser) {
+          const userRole = loggedInUser.role ? loggedInUser.role.toLowerCase() : "";
+          const isApproved = loggedInUser.is_approved;
+
+          // Check if mentor is validated by platform administration before logging in
+          if (userRole === "mentor" && isApproved === 0) {
+            setStatusMessage({ 
+              text: "Your account is still pending admin approval. Please check back later! ⏳", 
+              type: "error" 
+            });
+            return;
+          }
+
+          // Save valid session data to memory management
+          localStorage.setItem("user", JSON.stringify(loggedInUser));
+
+          // RESET FORM FIELDS
+          setForm({
+            name: "",
+            email: "",
+            password: "",
+            role: "student"
+          });
+
+          // INTELLIGENT ROUTING: Smooth redirect delay so they actually read the success message
+          setTimeout(() => {
+            setStatusMessage({ text: "", type: "" });
+            if (userRole === "admin") {
+              navigate("/admin-control");
+            } else if (userRole === "student") {
+              navigate("/student-dashboard");
+            } else if (userRole === "mentor") {
+              navigate("/mentor-dashboard");
+            } else {
+              navigate("/");
+            }
+          }, 1500);
+        }
 
       } else {
-        alert(data.message || "Something went wrong");
+        setStatusMessage({ text: data.message || "Invalid credentials. Please try again. ❌", type: "error" });
       }
 
     } catch (err) {
       console.error(err);
-      alert("Server error - is backend running?");
+      setStatusMessage({ text: "Server connection error — is the backend database running? 🖥️", type: "error" });
     }
   };
 
@@ -95,7 +130,7 @@ function Login() {
           </ul>
 
           <div className="codeblossom-logo">
-            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA" />
+            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA" alt="Logo" />
           </div>
         </nav>
       </header>
@@ -103,23 +138,43 @@ function Login() {
       <section className="login-hero">
         <div className="login-overlay"></div>
         <div className="login-content">
-          <div className="auth-container">
-            <h1>{isRegister ? "Create Account" : "Welcome Back"}</h1>
+          <div className="auth-container" style={{ position: "relative" }}>
+            <h1>{isRegister ? "Create Account" : "Welcome"}</h1>
+
+            {/* DYNAMIC INLINE NOTIFICATION BANNER */}
+            {statusMessage.text && (
+              <div style={{
+                padding: "12px",
+                borderRadius: "6px",
+                marginBottom: "15px",
+                fontSize: "14px",
+                textAlign: "center",
+                fontWeight: "500",
+                backgroundColor: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee",
+                color: statusMessage.type === "success" ? "#2e7d32" : "#c62828",
+                border: statusMessage.type === "success" ? "1px solid #a5d6a7" : "1px solid #ef9a9a",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                transition: "all 0.3s ease-in-out"
+              }}>
+                {statusMessage.text}
+              </div>
+            )}
+
+            <div style={{ width: "100%", marginBottom: "10px" }}>
+              <select name="role" value={form.role} onChange={handleChange} style={{ width: "100%", padding: "10px", borderRadius: "4px" }}>
+                <option value="student">Student</option>
+                <option value="mentor">Mentor</option>
+                <option value="admin">Platform Administrator</option>
+              </select>
+            </div>
 
             {isRegister && (
-              <>
-                <input
-                  name="name"
-                  placeholder="Full Name"
-                  value={form.name}
-                  onChange={handleChange}
-                />
-
-                <select name="role" value={form.role} onChange={handleChange}>
-                  <option value="student">Student</option>
-                  <option value="mentor">Mentor</option>
-                </select>
-              </>
+              <input
+                name="name"
+                placeholder="Full Name"
+                value={form.name}
+                onChange={handleChange}
+              />
             )}
 
             <input
@@ -143,8 +198,12 @@ function Login() {
             </button>
 
             <p
-              onClick={() => setIsRegister(!isRegister)}
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setStatusMessage({ text: "", type: "" });
+              }}
               className="toggle-auth"
+              style={{ cursor: "pointer", marginTop: "15px" }}
             >
               {isRegister
                 ? "Already have an account? Login"
@@ -155,7 +214,22 @@ function Login() {
       </section>
 
       <footer>
-        <p>© 2026 Skills Bloom</p>
+        <div className="footer-content">
+          <div className="footer-logo">
+            <h3>🌱 Skills Bloom</h3>
+            <p>Empowering the next generation of developers</p>
+          </div>
+          <div className="footer-links">
+            <Link to="/">Home</Link>
+            <Link to="/about">About</Link>
+            <Link to="/features">Features</Link>
+            <Link to="/mentors">Meet Our Mentors</Link>
+            <Link to="/login">Login</Link>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>© 2026 Skills Bloom | Powered by Code Blossom 🌸</p>
+        </div>
       </footer>
     </>
   );

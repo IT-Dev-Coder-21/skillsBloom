@@ -8,22 +8,29 @@ import Dashboard from "./pages/Dashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import MentorDashboard from "./pages/MentorDashboard";
 import BookSession from "./pages/BookSession";
-
-
+import AdminDashboard from "./pages/AdminDashboard"; 
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />   {/* NEW */}
+        {/* Core Informational Branding Routes */}
+        <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/features" element={<Features />} />
         <Route path="/mentors" element={<Mentors />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
+        
+        {/* Workspace Hub Routes */}
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/mentor-dashboard" element={<MentorDashboard />} />
-        <Route path="/book-session/:mentor" element={<BookSession />} />
+        
+        {/* ✅ FIXED PARAMETER: Swapped :mentor out for :mentorName to sync up directly with useParams() inside BookSession.jsx */}
+        <Route path="/book/:mentorName" element={<BookSession />} />
+        
+        {/* Central Administration Hub */}
+        <Route path="/admin-control" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   );

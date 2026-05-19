@@ -1,37 +1,38 @@
+import API_BASE_URL from "./config"; // ✅ Configuration bridge ready for live deployment synchronization
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Mentors() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate(); // ✅ FIX ADDED HERE
+  const navigate = useNavigate(); 
 
   const mentors = [
     {
       name: "Alice Musukwa",
       role: "Fullstack Developer",
       bio: "Helping students build modern websites and applications with cutting-edge technologies.",
-      image: "https://media.licdn.com/dms/image/v2/D4D03AQFLDhUysNv2Sw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1724589862011?e=1778112000&v=beta&t=W2hDEVpF-98YvX9gMf4lmaN0hbqk4RX_TlWb0n4NEtI",
-      skills: ["React", "Node.js", "Python", "AWS"]
+      image: "https://media.licdn.com/dms/image/v2/D4D03AQFLDhUysNv2Sw/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1724589862035?e=1780531200&v=beta&t=KaFXonEAeWX8vQGHiwKtC4cmDUx8HdkY-yltuORl-Y8",
+      skills: ["React", "Node.js", "HTML", "SQL", "MongoDB"]
     },
     {
       name: "Sana Abbas",
       role: "Fullstack Developer",
-      bio: "Guiding students in Cisco networking, system administration, and full-stack development.",
-      image: "https://media.licdn.com/dms/image/v2/C4D03AQEbMg9L9KcgaQ/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1638369937627?e=1778112000&v=beta&t=46y22cwrl6cFJ7Gya5YwZhYvDV-sdC168wRpz4s5AD0",
-      skills: ["JavaScript", "Cisco", "Networking", "DevOps"]
+      bio: "Guiding students in full-stack development.",
+      image: "https://media.licdn.com/dms/image/v2/C4D03AQEbMg9L9KcgaQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1638369937627?e=1780531200&v=beta&t=CDDlotK-OstXO81vw6-IMqr062Ir4XXNVquuUuAfa7w",
+      skills: ["JavaScript", "Node.js", "Express", "MongoDB"]
     },
     {
       name: "Caroline Mutemi",
       role: "Software Developer",
       bio: "Designing beautiful user experiences and building scalable web applications.",
-      image: "https://media.licdn.com/dms/image/v2/D4E03AQEK-u9ItzSbiA/profile-displayphoto-scale_400_400/B4EZsqjqDtIwAg-/0/1765945552870?e=1778112000&v=beta&t=5mhiwkyJp66UV766y4yd2SGRxs3M41TK540zrMf_h18",
-      skills: ["UI/UX", "React", "TypeScript", "Figma"]
+      image: "https://media.licdn.com/dms/image/v2/D4E03AQEK-u9ItzSbiA/profile-displayphoto-crop_800_800/B4EZsqjqDtIwAI-/0/1765945552767?e=1780531200&v=beta&t=ff-Kgo8JRtKTayRdORKcd5VWM1oklT9P0ux8DzUIrPE",
+      skills: ["UI/UX", "React", "TypeScript", "CSS"]
     }
   ];
 
   return (
     <>
-      {/* NAVBAR (UNCHANGED) */}
+      {/* NAVBAR */}
       <header>
         <nav className="navbar">
           <Link to="/" style={{ textDecoration: 'none', color: 'white' }}>
@@ -51,12 +52,12 @@ export default function Mentors() {
           </ul>
 
           <div className="codeblossom-logo">
-            <img src="https://th.bing.com/th/id/OIP.DRCGCITcKi7EU1R97su1YgHaJQ?w=144&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3" alt="Skills Bloom Logo" />
+            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA?w=150&h=150&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3" alt="Skills Bloom Logo" />
           </div>
         </nav>
       </header>
 
-      {/* HERO (UNCHANGED) */}
+      {/* HERO */}
       <section className="mentors-hero">
         <div className="mentors-hero-content">
           <h1>Meet Our Expert Mentors</h1>
@@ -74,29 +75,40 @@ export default function Mentors() {
               <div key={index} className="mentor-card">
                 <img src={mentor.image} alt={mentor.name} />
                 <h3>{mentor.name}</h3>
-                <p>{mentor.role}</p>
+                <p className="mentor-role-title">{mentor.role}</p>
                 <small>{mentor.bio}</small>
 
-                {/* ✅ FIXED BUTTON */}
-                <button
-                  className="book-btn"
-                 onClick={() => navigate(`/bookings/${mentor.name}`)}
-                >
-                  Book Session
-                </button>
+                {/* ✅ DYNAMIC SKILLS RENDER: Displaying the skills list as clean, stylized inline badges */}
+                <div className="mentor-skills-container" style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
+                  {mentor.skills.map((skill, sIdx) => (
+                    <span key={sIdx} className="skill-badge" style={{ background: '#f3e5f5', color: '#7b1fa2', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>
+                      {skill}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FOOTER (UNCHANGED) */}
+      {/* FOOTER */}
       <footer>
         <div className="footer-content">
           <div className="footer-logo">
             <h3>🌱 Skills Bloom</h3>
             <p>Empowering the next generation of developers</p>
           </div>
+          <div className="footer-links">
+            <Link to="/">Home</Link>
+            <Link to="/about">About</Link>
+            <Link to="/features">Features</Link>
+            <Link to="/mentors">Meet Our Mentors</Link>
+            <Link to="/login">Login</Link>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>© 2026 Skills Bloom | Powered by Code Blossom 🌸</p>
         </div>
       </footer>
     </>

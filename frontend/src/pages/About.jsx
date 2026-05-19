@@ -113,7 +113,22 @@ export default function About() {
 
       {/* FOOTER */}
       <footer>
-        <p>© 2026 Skills Bloom | Powered by Code Blossom 🌸</p>
+        <div className="footer-content">
+          <div className="footer-logo">
+            <h3>🌱 Skills Bloom</h3>
+            <p>Empowering the next generation of developers</p>
+          </div>
+          <div className="footer-links">
+            <Link to="/">Home</Link>
+            <Link to="/about">About</Link>
+            <Link to="/features">Features</Link>
+            <Link to="/mentors">Meet Our Mentors</Link>
+            <Link to="/login">Login</Link>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>© 2026 Skills Bloom | Powered by Code Blossom 🌸</p>
+        </div>
       </footer>
     </>
   );

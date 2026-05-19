@@ -4,88 +4,41 @@ import { Link } from "react-router-dom";
 export default function Features() {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Condensed down to core high-value professional features
   const features = [
     {
       icon: "📅",
       title: "Smart Scheduling",
-      description: "Book sessions with mentors at your convenience with our intelligent scheduling system that adapts to your timezone and availability. Never miss a session with automated reminders and conflict detection.",
-      details: ["Timezone-aware scheduling", "Automated reminders", "Conflict detection", "Flexible rescheduling"]
+      description: "Book sessions with mentors at your convenience with our real-time interactive calendar availability system.",
+      details: ["Real-time availability", "Automated tracking reminders", "Conflict detection"]
     },
     {
       icon: "👨‍🏫",
-      title: "Expert Mentors",
-      description: "Learn from industry professionals with years of experience in various tech fields, from web development to data science. Our mentors are carefully vetted and trained.",
-      details: ["Industry professionals", "Multi-domain expertise", "Vetted and trained", "Real-world experience"]
+      title: "Expert Vetted Mentors",
+      description: "Learn full-stack web development directly from experienced industry professionals and dedicated program mentors.",
+      details: ["Vetted technical mentors", "Real-world development insight", "Focused 1-on-1 feedback"]
     },
     {
       icon: "📊",
-      title: "Progress Tracking",
-      description: "Monitor your learning journey with detailed analytics, milestone achievements, and personalized learning recommendations tailored to your goals.",
-      details: ["Detailed analytics", "Milestone tracking", "Personalized recommendations", "Goal-oriented learning"]
+      title: "Milestone Tracking",
+      description: "Monitor your software engineering learning journey with clear dashboard progress logs and milestone completions.",
+      details: ["Visual progress analytics", "Milestone achievements", "Goal-oriented logging"]
     },
     {
       icon: "💬",
-      title: "Live Sessions",
-      description: "Engage in interactive live mentoring sessions with screen sharing, code reviews, and real-time collaboration tools for an immersive learning experience.",
-      details: ["Screen sharing", "Code reviews", "Real-time collaboration", "Interactive whiteboard"]
-    },
-    {
-      icon: "📚",
-      title: "Resource Library",
-      description: "Access a comprehensive library of learning materials, tutorials, and resources curated by our expert mentors and updated regularly.",
-      details: ["Curated content", "Regular updates", "Multiple formats", "Searchable database"]
-    },
-    {
-      icon: "🎯",
-      title: "Personalized Learning",
-      description: "Get customized learning paths and recommendations based on your goals, skill level, and learning preferences with AI-powered suggestions.",
-      details: ["AI-powered recommendations", "Skill assessment", "Custom learning paths", "Adaptive content"]
-    },
-    {
-      icon: "🏆",
-      title: "Certification",
-      description: "Earn recognized certificates upon completing mentorship programs and skill assessments, validated by industry experts.",
-      details: ["Industry-recognized", "Skill validation", "Digital certificates", "Portfolio building"]
-    },
-    {
-      icon: "🌐",
-      title: "Global Community",
-      description: "Connect with learners and mentors from around the world, building a diverse and supportive learning community with networking opportunities.",
-      details: ["Global networking", "Diverse community", "Peer learning", "Cultural exchange"]
-    },
-    {
-      icon: "🔒",
-      title: "Secure Platform",
-      description: "Your data and sessions are protected with enterprise-grade security, ensuring a safe and private learning environment.",
-      details: ["End-to-end encryption", "Secure payments", "Privacy protection", "Data security"]
-    },
-    {
-      icon: "📱",
-      title: "Mobile Learning",
-      description: "Access your learning materials and schedule sessions on-the-go with our responsive mobile app and web platform.",
-      details: ["Mobile app", "Responsive design", "Offline access", "Cross-platform sync"]
-    },
-    {
-      icon: "💰",
-      title: "Flexible Pricing",
-      description: "Choose from various pricing plans designed to fit different learning needs and budgets, with no hidden fees.",
-      details: ["Multiple plans", "Transparent pricing", "No hidden fees", "Flexible subscriptions"]
-    },
-    {
-      icon: "🎓",
-      title: "Career Support",
-      description: "Get career guidance, resume reviews, and interview preparation from experienced mentors to accelerate your professional growth.",
-      details: ["Career guidance", "Resume reviews", "Interview prep", "Job placement support"]
+      title: "Interactive Collaboration",
+      description: "Engage in live technical mentoring sessions featuring screen sharing, collaborative coding, and detailed reviews.",
+      details: ["Peer screen sharing", "In-depth code reviews", "Structured feedback tracking"]
     }
   ];
 
   return (
     <>
-      {/* NAVBAR */}
+      {/* NAVBAR - Styled to match the clean layout of your dashboard project */}
       <header>
         <nav className="navbar">
           <Link to="/" style={{ textDecoration: 'none', color: 'white' }}>
-            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA?w=150&h=150&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3" alt="Skills Bloom Logo" className="navbar-logo" />
+            <h1>🌱 Skills Bloom</h1>
           </Link>
 
           <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
@@ -106,60 +59,55 @@ export default function Features() {
         </nav>
       </header>
 
-      {/* FEATURES HERO */}
-      <section className="features-hero">
-        <div className="features-overlay"></div>
+      {/* FEATURES HERO - Cleaned and tightened layout */}
+      <section className="features-hero" style={{ padding: "40px 20px", textAlign: "center" }}>
         <div className="features-hero-content">
-          <h1>Powerful Features for Exceptional Learning</h1>
-          <p>Discover the comprehensive tools and features that make Skills Bloom the ultimate platform for mentorship and skill development.</p>
-          <div className="hero-stats">
+          <h1 style={{ fontSize: "32px", marginBottom: "10px" }}>Platform Ecosystem Features</h1>
+          <p style={{ maxWidth: "600px", margin: "0 auto 25px auto", color: "#666" }}>
+            Discover the comprehensive workspace tools that seamlessly link students to tracking mentors.
+          </p>
+          <div className="hero-stats" style={{ display: "flex", justifyContent: "center", gap: "40px" }}>
             <div className="stat">
-              <h3>12+</h3>
-              <p>Core Features</p>
+              <h3 style={{ margin: "0", fontSize: "24px" }}>4 Core</h3>
+              <p style={{ margin: "0", fontSize: "14px", color: "#777" }}>Modules</p>
             </div>
             <div className="stat">
-              <h3>100%</h3>
-              <p>User Satisfaction</p>
-            </div>
-            <div className="stat">
-              <h3>24/7</h3>
-              <p>Support Available</p>
+              <h3 style={{ margin: "0", fontSize: "24px" }}>100%</h3>
+              <p style={{ margin: "0", fontSize: "14px", color: "#777" }}>Peer Alignment</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* FEATURES GRID */}
-      <section className="features-section">
+      <section className="features-section" style={{ padding: "30px 20px" }}>
         <div className="container">
-          <div className="features-intro">
-            <h2>Everything You Need to Succeed</h2>
-            <p>Our platform combines cutting-edge technology with expert mentorship to deliver an unparalleled learning experience.</p>
-          </div>
-
-          <div className="features-grid">
+          <div className="features-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
             {features.map((feature, index) => (
-              <div key={index} className="feature-card">
-                <div className="feature-header">
-                  <div className="feature-icon">{feature.icon}</div>
-                  <h3>{feature.title}</h3>
+              <div key={index} className="feature-card" style={{ padding: "20px", border: "1px solid #eee", borderRadius: "8px", background: "#fff" }}>
+                <div className="feature-header" style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                  <span style={{ fontSize: "24px" }}>{feature.icon}</span>
+                  <h3 style={{ margin: "0", fontSize: "18px" }}>{feature.title}</h3>
                 </div>
-                <p className="feature-description">{feature.description}</p>
-                <ul className="feature-details">
+                <p className="feature-description" style={{ fontSize: "14px", color: "#55px", lineHeight: "1.5", marginBottom: "12px" }}>
+                  {feature.description}
+                </p>
+                <ul className="feature-details" style={{ paddingLeft: "20px", fontSize: "13px", color: "#666" }}>
                   {feature.details.map((detail, detailIndex) => (
-                    <li key={detailIndex}>{detail}</li>
+                    <li key={detailIndex} style={{ marginBottom: "4px" }}>{detail}</li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
 
-          <div className="features-cta">
-            <h3>Ready to Experience These Features?</h3>
-            <p>Join thousands of learners who are already transforming their careers with Skills Bloom.</p>
-            <div className="cta-buttons">
-              <Link to="/login" className="btn primary">Start Your Journey</Link>
-              <Link to="/mentors" className="btn secondary">Meet Our Mentors</Link>
+          {/* COMPACT CTA BLOCK */}
+          <div className="features-cta" style={{ textAlign: "center", marginTop: "45px", padding: "25px", background: "#f9f9f9", borderRadius: "8px" }}>
+            <h3 style={{ margin: "0 0 8px 0" }}>Ready to coordinate your tracking session?</h3>
+            <p style={{ margin: "0 0 15px 0", fontSize: "14px", color: "#666" }}>Connect with a program leader or check scheduled records.</p>
+            <div className="cta-buttons" style={{ display: "flex", justifyContent: "center", gap: "15px" }}>
+              <Link to="/login" className="btn primary">Get Started</Link>
+              <Link to="/mentors" className="btn secondary">View Mentors</Link>
             </div>
           </div>
         </div>
