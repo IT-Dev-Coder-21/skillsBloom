@@ -1,5 +1,60 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+
+// 🌟 REPETITIVE SCROLL-TRIGGERED ANIMATED COUNTER
+function AnimatedCounter({ target, duration = 2000, suffix = "" }) {
+  const [count, setCount] = useState(0);
+  const elementRef = useRef(null);
+  const animationFrameRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Cancel any ongoing animation frame to prevent overlapping loops
+        if (animationFrameRef.current) {
+          window.cancelAnimationFrame(animationFrameRef.current);
+        }
+
+        if (entry.isIntersecting) {
+          // 🚀 START ANIMATING WHEN IT ENTERS THE SCREEN
+          let startTimestamp = null;
+          
+          const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            
+            // Easing function to make the counting slow down nicely near the end
+            const easeOutQuad = progress * (2 - progress);
+            setCount(Math.floor(easeOutQuad * target));
+
+            if (progress < 1) {
+              animationFrameRef.current = window.requestAnimationFrame(step);
+            }
+          };
+          
+          animationFrameRef.current = window.requestAnimationFrame(step);
+        } else {
+          // 🔄 RESET TO 0 WHEN IT SCROLLS OUT OF VIEW
+          setCount(0);
+        }
+      },
+      { threshold: 0.1 } // Starts animating when 10% of the card is visible
+    );
+
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+      if (animationFrameRef.current) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [target, duration]);
+
+  return <h3 ref={elementRef}>{count}{suffix}</h3>;
+}
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -31,7 +86,7 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* FULL-SCREEN HERO */}
+      {/* FULL-SCREEN HERO WITH REPETITIVE COUNTERS */}
       <section className="hero-fullscreen">
         <div className="hero-overlay"></div>
         <div className="hero-content">
@@ -51,15 +106,15 @@ export default function Home() {
 
           <div className="hero-stats">
             <div className="stat">
-              <h3>500+</h3>
+              <AnimatedCounter target={5000} suffix="+" />
               <p>Students Mentored</p>
             </div>
             <div className="stat">
-              <h3>50+</h3>
+              <AnimatedCounter target={50} suffix="+" />
               <p>Expert Mentors</p>
             </div>
             <div className="stat">
-              <h3>95%</h3>
+              <AnimatedCounter target={95} suffix="%" />
               <p>Success Rate</p>
             </div>
           </div>
@@ -73,51 +128,35 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FEATURES PREVIEW */}
+      {/* STREAMLINED FEATURES PREVIEW */}
       <section id="features" className="features-preview">
         <div className="container">
           <h2>Why Choose Skills Bloom?</h2>
-          <p className="section-subtitle">Discover the powerful features that make learning with us exceptional</p>
+          <p className="section-subtitle">Discover the core pillars that make learning with us exceptional</p>
+          
           <div className="features-grid">
             <div className="feature-item">
-              <div className="feature-icon">📅</div>
-              <h3>Smart Scheduling</h3>
-              <p>Book sessions with mentors at your convenience with our intelligent scheduling system that adapts to your timezone and availability.</p>
-            </div>
-            <div className="feature-item">
               <div className="feature-icon">👨‍🏫</div>
-              <h3>Expert Mentors</h3>
-              <p>Learn from industry professionals with years of experience in various tech fields, from web development to data science.</p>
+              <h3>Expert 1-on-1 Mentorship</h3>
+              <p>Learn directly from industry professionals through personalized paths tailored exactly to your coding goals and pacing.</p>
             </div>
-            <div className="feature-item">
-              <div className="feature-icon">📊</div>
-              <h3>Progress Tracking</h3>
-              <p>Monitor your learning journey with detailed analytics, milestone achievements, and personalized learning recommendations.</p>
-            </div>
+
             <div className="feature-item">
               <div className="feature-icon">💬</div>
-              <h3>Live Sessions</h3>
-              <p>Engage in interactive live mentoring sessions with screen sharing, code reviews, and real-time collaboration tools.</p>
+              <h3>Live Interactive Coding</h3>
+              <p>Engage in real-time pairing sessions with live screen-sharing, expert architectural code reviews, and fast troubleshooting.</p>
             </div>
+
             <div className="feature-item">
-              <div className="feature-icon">📚</div>
-              <h3>Resource Library</h3>
-              <p>Access a comprehensive library of learning materials, tutorials, and resources curated by our expert mentors.</p>
+              <div className="feature-icon">📅</div>
+              <h3>Smart Flexible Scheduling</h3>
+              <p>Book matching consultation slots effortlessly with an intelligent layout tailored completely around your daily schedule.</p>
             </div>
+
             <div className="feature-item">
-              <div className="feature-icon">🎯</div>
-              <h3>Personalized Learning</h3>
-              <p>Get customized learning paths and recommendations based on your goals, skill level, and learning preferences.</p>
-            </div>
-            <div className="feature-item">
-              <div className="feature-icon">🏆</div>
-              <h3>Certification</h3>
-              <p>Earn recognized certificates upon completing mentorship programs and skill assessments.</p>
-            </div>
-            <div className="feature-item">
-              <div className="feature-icon">🌐</div>
-              <h3>Global Community</h3>
-              <p>Connect with learners and mentors from around the world, building a diverse and supportive learning community.</p>
+              <div className="feature-icon">📊</div>
+              <h3>Milestone Progress Dashboards</h3>
+              <p>Track your technical expansion easily using metric performance graphs, project checkmarks, and targeted skill assessments.</p>
             </div>
           </div>
           

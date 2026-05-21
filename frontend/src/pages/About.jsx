@@ -1,5 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+
+// 🌟 REPETITIVE SCROLL-TRIGGERED ANIMATED COUNTER
+function AnimatedCounter({ target, duration = 2000, suffix = "" }) {
+  const [count, setCount] = useState(0);
+  const elementRef = useRef(null);
+  const animationFrameRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (animationFrameRef.current) {
+          window.cancelAnimationFrame(animationFrameRef.current);
+        }
+
+        if (entry.isIntersecting) {
+          let startTimestamp = null;
+          
+          const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            
+            const easeOutQuad = progress * (2 - progress);
+            setCount(Math.floor(easeOutQuad * target));
+
+            if (progress < 1) {
+              animationFrameRef.current = window.requestAnimationFrame(step);
+            }
+          };
+          
+          animationFrameRef.current = window.requestAnimationFrame(step);
+        } else {
+          setCount(0); // Reset to 0 when it scrolls out of view
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+      if (animationFrameRef.current) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [target, duration]);
+
+  return <h3 ref={elementRef}>{count}{suffix}</h3>;
+}
 
 export default function About() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -77,23 +128,24 @@ export default function About() {
             </div>
           </div>
 
+          {/* ABOUT STATS WITH REPETITIVE LIVE COUNTERS */}
           <div className="about-stats">
             <h2>Our Impact</h2>
             <div className="stats-grid">
               <div className="stat-item">
-                <h3>500+</h3>
+                <AnimatedCounter target={5000} suffix="+" />
                 <p>Students Mentored</p>
               </div>
               <div className="stat-item">
-                <h3>50+</h3>
+                <AnimatedCounter target={50} suffix="+" />
                 <p>Expert Mentors</p>
               </div>
               <div className="stat-item">
-                <h3>1000+</h3>
+                <AnimatedCounter target={1000} suffix="+" />
                 <p>Sessions Completed</p>
               </div>
               <div className="stat-item">
-                <h3>95%</h3>
+                <AnimatedCounter target={95} suffix="%" />
                 <p>Success Rate</p>
               </div>
             </div>
@@ -107,7 +159,7 @@ export default function About() {
         <p>Join our community of learners and mentors today.</p>
         <div className="cta-buttons">
           <Link to="/login" className="btn primary">Get Started</Link>
-          <Link to="/#mentors" className="btn secondary">Meet Our Mentors</Link>
+          <Link to="/mentors" className="btn secondary">Meet Our Mentors</Link>
         </div>
       </section>
 

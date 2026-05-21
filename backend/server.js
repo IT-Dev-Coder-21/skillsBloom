@@ -46,6 +46,7 @@ const transporter = nodemailer.createTransport({
 
 // ROUTES
 app.get("/test", (req, res) => res.send("Test works"));
+
 // Root route to welcome visitors and prevent "Cannot GET /"
 app.get("/", (req, res) => {
   res.json({
@@ -54,6 +55,7 @@ app.get("/", (req, res) => {
     version: "1.0.0"
   });
 });
+
 app.get("/users", (req, res) => {
   db.query("SELECT * FROM users", (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -61,8 +63,18 @@ app.get("/users", (req, res) => {
   });
 });
 
+// REGISTRATION WITH 8-CHARACTER PASSWORD SHIELD
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
+
+  // 🔒 BACKEND PASSWORD VALIDATION SHIELD
+  if (!password || password.length < 8) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "Registration rejected: Password must be at least 8 characters long! 🔑" 
+    });
+  }
+
   const normalizedRole = role ? role.toLowerCase() : "student";
   const isApproved = normalizedRole === 'mentor' ? 0 : 1; 
   const randomId = Math.floor(Math.random() * 999999);
@@ -122,8 +134,7 @@ app.post("/bookings", (req, res) => {
       mentorEmail = mentorResult[0].email;
     }
 
-    // 🌟 FORCED FIX: Generate a numeric ID using the current time milliseconds
-    // This ensures an ID is always sent, bypassing the "no default value" database error.
+    // Generate a numeric ID using the current time milliseconds
     const forcedBookingId = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 1000);
 
     const sql = "INSERT INTO bookings (id, studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -131,9 +142,10 @@ app.post("/bookings", (req, res) => {
     db.query(sql, [forcedBookingId, studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
       if (err) return res.status(500).json({ success: false, errorDetails: err.message });
 
+      // Fixed 'to' address value to send mail to the student correctly
       const studentMailOptions = {
         from: process.env.EMAIL_USER,
-        to: email,
+        to: studentEmail, 
         subject: "Your Mentorship Session is Confirmed! 🎉",
         text: `Hello ${studentName},\n\nYour session with ${mentorName} is confirmed for ${date} at ${time}.\nObjective: ${objective}\n\nBest regards,\nSkills Bloom Team`
       };
@@ -142,10 +154,11 @@ app.post("/bookings", (req, res) => {
         if (error) console.log("Student email error:", error);
       });
 
+      // Fixed 'to' address value to send mail to the mentor correctly
       if (mentorEmail) {
         const mentorMailOptions = {
           from: process.env.EMAIL_USER,
-          to: email,
+          to: mentorEmail,
           subject: "New Mentorship Booking Notification! 📅",
           text: `Hello ${mentorName},\n\nA student has booked a session with you!\n\nDetails:\n- Student Name: ${studentName}\n- Date: ${date}\n- Time: ${time}\n- Objective: ${objective}\n\nPlease prepare accordingly.\n\nBest regards,\nSkills Bloom Team`
         };
@@ -159,6 +172,7 @@ app.post("/bookings", (req, res) => {
     });
   });
 });
+
 app.delete("/bookings/:id", (req, res) => {
   db.query("DELETE FROM bookings WHERE id = ?", [req.params.id], (err, result) => {
     if (err) return res.status(500).json({ success: false, error: err.message });

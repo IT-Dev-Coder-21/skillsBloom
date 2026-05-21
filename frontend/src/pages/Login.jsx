@@ -22,8 +22,15 @@ function Login() {
   };
 
   const handleSubmit = async () => {
+    // 1. Basic required fields check
     if (!form.email || !form.password || (isRegister && !form.name)) {
       setStatusMessage({ text: "Please fill in all required fields! ⚠️", type: "error" });
+      return;
+    }
+
+    // 2. 🔒 New 8-Character Password Validation (Applies when creating a new account)
+    if (isRegister && form.password.length < 8) {
+      setStatusMessage({ text: "Password must be at least 8 characters long! 🔑", type: "error" });
       return;
     }
 
@@ -116,7 +123,6 @@ function Login() {
         </nav>
       </header>
 
-
       <section className="login-hero">
         <div className="login-content">
           <div className="auth-container">
@@ -145,7 +151,14 @@ function Login() {
             )}
 
             <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} />
-            <input type="password" name="password" placeholder="Password" value={form.password} onChange={handleChange} />
+            <input 
+              type="password" 
+              name="password" 
+              placeholder={isRegister ? "Password (min 8 chars)" : "Password"} 
+              value={form.password} 
+              onChange={handleChange}
+              minLength={isRegister ? 8 : undefined}
+            />
 
             <button onClick={handleSubmit} className="login-btn">{isRegister ? "Sign Up" : "Login"}</button>
 

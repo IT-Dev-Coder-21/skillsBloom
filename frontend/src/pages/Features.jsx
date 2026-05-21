@@ -66,16 +66,7 @@ export default function Features() {
           <p style={{ maxWidth: "600px", margin: "0 auto 25px auto", color: "#666" }}>
             Discover the comprehensive workspace tools that seamlessly link students to tracking mentors.
           </p>
-          <div className="hero-stats" style={{ display: "flex", justifyContent: "center", gap: "40px" }}>
-            <div className="stat">
-              <h3 style={{ margin: "0", fontSize: "24px" }}>4 Core</h3>
-              <p style={{ margin: "0", fontSize: "14px", color: "#777" }}>Modules</p>
-            </div>
-            <div className="stat">
-              <h3 style={{ margin: "0", fontSize: "24px" }}>100%</h3>
-              <p style={{ margin: "0", fontSize: "14px", color: "#777" }}>Peer Alignment</p>
-            </div>
-          </div>
+          
         </div>
       </section>
 
