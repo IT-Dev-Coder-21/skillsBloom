@@ -113,28 +113,52 @@ app.get("/bookings", (req, res) => {
 
 app.post("/bookings", (req, res) => {
   const { studentName, studentEmail, mentorName, date, time, objective } = req.body;
-  const sql = "INSERT INTO bookings (studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?)";
   
-  db.query(sql, [studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
-    if (err) return res.status(500).json({ success: false, errorDetails: err.message });
+  const findMentorSql = "SELECT email FROM users WHERE name = ? AND role = 'mentor' LIMIT 1";
+  
+  db.query(findMentorSql, [mentorName], (mentorErr, mentorResult) => {
+    let mentorEmail = null;
+    if (!mentorErr && mentorResult.length > 0) {
+      mentorEmail = mentorResult[0].email;
+    }
 
-    // Send Email Notification
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: studentEmail,
-      subject: "New Mentorship Session Confirmed!",
-      text: `Hello ${studentName},\n\nYour session with ${mentorName} is confirmed for ${date} at ${time}.\nObjective: ${objective}\n\nBest regards,\nSkills Bloom Team`
-    };
+    // 🌟 REMOVED randomBookingId because MySQL AUTO_INCREMENT handles it now!
+    const sql = "INSERT INTO bookings (studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?)";
+    
+    db.query(sql, [studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
+      if (err) return res.status(500).json({ success: false, errorDetails: err.message });
 
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) console.log("Email error:", error);
-      else console.log("Email sent:", info.response);
+      // Grab the auto-generated ID from MySQL to send back to the frontend
+      const newBookingId = result.insertId;
+
+      const studentMailOptions = {
+        from: process.env.EMAIL_USER,
+        to: studentEmail,
+        subject: "Your Mentorship Session is Confirmed! 🎉",
+        text: `Hello ${studentName},\n\nYour session with ${mentorName} is confirmed for ${date} at ${time}.\nObjective: ${objective}\n\nBest regards,\nSkills Bloom Team`
+      };
+
+      transporter.sendMail(studentMailOptions, (error) => {
+        if (error) console.log("Student email error:", error);
+      });
+
+      if (mentorEmail) {
+        const mentorMailOptions = {
+          from: process.env.EMAIL_USER,
+          to: mentorEmail,
+          subject: "New Mentorship Booking Notification! 📅",
+          text: `Hello ${mentorName},\n\nA student has booked a session with you!\n\nDetails:\n- Student Name: ${studentName}\n- Date: ${date}\n- Time: ${time}\n- Objective: ${objective}\n\nPlease prepare accordingly.\n\nBest regards,\nSkills Bloom Team`
+        };
+
+        transporter.sendMail(mentorMailOptions, (error) => {
+          if (error) console.log("Mentor email error:", error);
+        });
+      }
+
+      res.status(200).json({ success: true, id: newBookingId });
     });
-
-    res.status(200).json({ success: true, id: result.insertId });
   });
 });
-
 app.delete("/bookings/:id", (req, res) => {
   db.query("DELETE FROM bookings WHERE id = ?", [req.params.id], (err, result) => {
     if (err) return res.status(500).json({ success: false, error: err.message });
