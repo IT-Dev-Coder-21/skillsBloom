@@ -6,8 +6,6 @@ import "../index.css";
 function Login() {
   const [isRegister, setIsRegister] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  // ✅ STATUS BANNER STATE: Replaces browser alerts with inline dynamic UI notifications
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
 
   const [form, setForm] = useState({
@@ -29,13 +27,13 @@ function Login() {
       return;
     }
 
-    // ✅ FIX: Replaced hardcoded localhost strings with dynamic API_BASE_URL variable
+    // Correctly using the dynamic URL from config.js
     const url = isRegister
       ? `${API_BASE_URL}/register`
       : `${API_BASE_URL}/login`;
 
     try {
-      const res = await fetch("https://skillsbloom-api.onrender.com/api/login", {
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -48,7 +46,6 @@ function Login() {
       if (data.success) {
         setStatusMessage({ text: `${data.message} 🚀`, type: "success" });
 
-        // If it was registration and they are an unapproved mentor, clear up and stop here
         if (isRegister && (form.role === "mentor" || form.role === "Mentor")) {
           setTimeout(() => {
             setForm({ name: "", email: "", password: "", role: "student" });
@@ -64,45 +61,29 @@ function Login() {
           const userRole = loggedInUser.role ? loggedInUser.role.toLowerCase() : "";
           const isApproved = loggedInUser.is_approved;
 
-          // Check if mentor is validated by platform administration before logging in
           if (userRole === "mentor" && isApproved === 0) {
             setStatusMessage({ 
-              text: "Your account is still pending admin approval. Please check back later! ⏳", 
+              text: "Your account is still pending admin approval. ⏳", 
               type: "error" 
             });
             return;
           }
 
-          // Save valid session data to memory management
           localStorage.setItem("user", JSON.stringify(loggedInUser));
 
-          // RESET FORM FIELDS
-          setForm({
-            name: "",
-            email: "",
-            password: "",
-            role: "student"
-          });
+          setForm({ name: "", email: "", password: "", role: "student" });
 
-          // INTELLIGENT ROUTING: Smooth redirect delay so they actually read the success message
           setTimeout(() => {
             setStatusMessage({ text: "", type: "" });
-            if (userRole === "admin") {
-              navigate("/admin-control");
-            } else if (userRole === "student") {
-              navigate("/student-dashboard");
-            } else if (userRole === "mentor") {
-              navigate("/mentor-dashboard");
-            } else {
-              navigate("/");
-            }
+            if (userRole === "admin") navigate("/admin-control");
+            else if (userRole === "student") navigate("/student-dashboard");
+            else if (userRole === "mentor") navigate("/mentor-dashboard");
+            else navigate("/");
           }, 1500);
         }
-
       } else {
-        setStatusMessage({ text: data.message || "Invalid credentials. Please try again. ❌", type: "error" });
+        setStatusMessage({ text: data.message || "Invalid credentials. ❌", type: "error" });
       }
-
     } catch (err) {
       console.error(err);
       setStatusMessage({ text: "Server connection error — is the backend database running? 🖥️", type: "error" });
@@ -113,7 +94,7 @@ function Login() {
     <>
       <header>
         <nav className="navbar">
-          <Link to="/" style={{ textDecoration: "none", color: "white" }}>
+          <Link to="/" style={{ textDecoration: 'none', color: 'white' }}>
             <h1>🌱 Skills Bloom</h1>
           </Link>
 
@@ -130,107 +111,51 @@ function Login() {
           </ul>
 
           <div className="codeblossom-logo">
-            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA" alt="Logo" />
+            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA?w=150&h=150&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3" alt="Skills Bloom Logo" />
           </div>
         </nav>
       </header>
 
-      <section className="login-hero">
-        <div className="login-overlay"></div>
-        <div className="login-content">
-          <div className="auth-container" style={{ position: "relative" }}>
-            <h1>{isRegister ? "Create Account" : "Welcome"}</h1>
 
-            {/* DYNAMIC INLINE NOTIFICATION BANNER */}
+      <section className="login-hero">
+        <div className="login-content">
+          <div className="auth-container">
+            <h1>{isRegister ? "Create Account" : "Welcome"}</h1>
+            
             {statusMessage.text && (
               <div style={{
-                padding: "12px",
-                borderRadius: "6px",
-                marginBottom: "15px",
-                fontSize: "14px",
-                textAlign: "center",
-                fontWeight: "500",
+                padding: "12px", borderRadius: "6px", marginBottom: "15px",
                 backgroundColor: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee",
                 color: statusMessage.type === "success" ? "#2e7d32" : "#c62828",
                 border: statusMessage.type === "success" ? "1px solid #a5d6a7" : "1px solid #ef9a9a",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                transition: "all 0.3s ease-in-out"
+                textAlign: "center"
               }}>
                 {statusMessage.text}
               </div>
             )}
 
-            <div style={{ width: "100%", marginBottom: "10px" }}>
-              <select name="role" value={form.role} onChange={handleChange} style={{ width: "100%", padding: "10px", borderRadius: "4px" }}>
-                <option value="student">Student</option>
-                <option value="mentor">Mentor</option>
-                <option value="admin">Platform Administrator</option>
-              </select>
-            </div>
+            <select name="role" value={form.role} onChange={handleChange} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+              <option value="student">Student</option>
+              <option value="mentor">Mentor</option>
+              <option value="admin">Platform Administrator</option>
+            </select>
 
             {isRegister && (
-              <input
-                name="name"
-                placeholder="Full Name"
-                value={form.name}
-                onChange={handleChange}
-              />
+              <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} />
             )}
 
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={form.email}
-              onChange={handleChange}
-            />
+            <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} />
+            <input type="password" name="password" placeholder="Password" value={form.password} onChange={handleChange} />
 
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={handleChange}
-            />
+            <button onClick={handleSubmit} className="login-btn">{isRegister ? "Sign Up" : "Login"}</button>
 
-            <button onClick={handleSubmit} className="login-btn">
-              {isRegister ? "Sign Up" : "Login"}
-            </button>
-
-            <p
-              onClick={() => {
-                setIsRegister(!isRegister);
-                setStatusMessage({ text: "", type: "" });
-              }}
-              className="toggle-auth"
-              style={{ cursor: "pointer", marginTop: "15px" }}
-            >
-              {isRegister
-                ? "Already have an account? Login"
-                : "Don't have an account? Sign up"}
+            <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} 
+               style={{ cursor: "pointer", marginTop: "15px" }}>
+              {isRegister ? "Already have an account? Login" : "Don't have an account? Sign up"}
             </p>
           </div>
         </div>
       </section>
-
-      <footer>
-        <div className="footer-content">
-          <div className="footer-logo">
-            <h3>🌱 Skills Bloom</h3>
-            <p>Empowering the next generation of developers</p>
-          </div>
-          <div className="footer-links">
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-            <Link to="/features">Features</Link>
-            <Link to="/mentors">Meet Our Mentors</Link>
-            <Link to="/login">Login</Link>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <p>© 2026 Skills Bloom | Powered by Code Blossom 🌸</p>
-        </div>
-      </footer>
     </>
   );
 }

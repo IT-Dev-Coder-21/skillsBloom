@@ -56,6 +56,16 @@ export default function BookSession() {
         body: JSON.stringify(newBooking)
       });
 
+      // Catch backend errors (like a 500 server crash) gracefully before parsing JSON
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        setStatusMessage({ 
+          text: errorData.errorDetails || `Server error (${res.status}). Check your backend console! 🖥️`, 
+          type: "error" 
+        });
+        return;
+      }
+
       const data = await res.json();
 
       if (data.success) {

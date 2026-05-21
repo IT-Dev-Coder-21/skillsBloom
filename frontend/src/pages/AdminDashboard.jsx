@@ -1,99 +1,97 @@
-import API_BASE_URL from "./config"; // ✅ Imported global configuration bridge for API endpoints
+import API_BASE_URL from "./config";
 import React, { useState, useEffect } from "react";
 
 export default function AdminDashboard() {
   const [pendingMentors, setPendingMentors] = useState([]);
-  
-  // ✅ ENHANCED STATE: Replaced raw string state with object layout for standard banner rendering
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
 
-  // Fetch pending mentors when the dashboard opens
+  // Fetch pending mentors on load
   useEffect(() => {
-    // ✅ UPDATED ENDPOINT: Migrated path string to configuration base url
     fetch(`${API_BASE_URL}/admin/pending-mentors`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
       .then((data) => setPendingMentors(data))
-      .catch((err) => {
-        console.error("Error fetching mentors:", err);
-        setStatusMessage({ text: "Failed to pull pending verification entries from database. 🖥️", type: "error" });
-      });
+      .catch(() => setStatusMessage({ text: "Failed to load database entries from the server. 🖥️", type: "error" }));
   }, []);
 
-  // Handle clicking the approval button
+  // Handle Approval
   const handleApprove = async (mentorId) => {
     try {
-      // ✅ UPDATED ENDPOINT: Migrated path string to configuration base url
       const res = await fetch(`${API_BASE_URL}/admin/approve-mentor`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mentorId })
       });
+      
       const data = await res.json();
 
       if (data.success) {
-        setStatusMessage({ text: "Mentor authorized successfully! Notification pipeline updated. 🎉", type: "success" });
-        
-        // Filter out the newly approved mentor from the UI list instantly
+        setStatusMessage({ text: "Mentor authorized successfully! They are now live on the platform. 🎉", type: "success" });
         setPendingMentors(pendingMentors.filter(m => m.id !== mentorId));
-
-        // Clear notification context window automatically after 3.5 seconds
-        setTimeout(() => setStatusMessage({ text: "", type: "" }), 3500);
+        setTimeout(() => setStatusMessage({ text: "", type: "" }), 4000);
       } else {
-        setStatusMessage({ text: data.message || "Authorization execution failed.", type: "error" });
+        setStatusMessage({ text: "Approval failed.", type: "error" });
       }
     } catch (err) {
-      setStatusMessage({ text: "Approval failed: " + err.message, type: "error" });
+      setStatusMessage({ text: "Server unreachable.", type: "error" });
     }
   };
 
   return (
-    <div style={{ padding: "40px", fontFamily: "Arial, sans-serif", maxWidth: "900px", margin: "0 auto" }}>
-      <h2 style={{ color: "#333" }}>🌸 Skills Bloom — Administrator Panel</h2>
+    <div style={{ padding: "40px", fontFamily: "Arial", maxWidth: "900px", margin: "0 auto" }}>
+      <h2>🌸 Skills Bloom — Administrator Panel</h2>
       
-      {/* ✅ STATUS MESSAGE NOTIFICATION BANNER */}
+      {/* Notification Banner */}
       {statusMessage.text && (
         <div style={{
-          padding: "14px",
+          padding: "12px", 
+          marginBottom: "20px", 
           borderRadius: "6px",
-          marginTop: "15px",
-          marginBottom: "20px",
-          fontSize: "14px",
-          textAlign: "center",
           fontWeight: "500",
-          backgroundColor: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee",
-          color: statusMessage.type === "success" ? "#2e7d32" : "#c62828",
-          border: statusMessage.type === "success" ? "1px solid #a5d6a7" : "1px solid #ef9a9a",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-          transition: "all 0.3s ease-in-out"
+          backgroundColor: statusMessage.type === "success" ? "#d4edda" : "#f8d7da",
+          color: statusMessage.type === "success" ? "#155724" : "#721c24",
+          border: statusMessage.type === "success" ? "1px solid #c3e6cb" : "1px solid #f5c6cb"
         }}>
           {statusMessage.text}
         </div>
       )}
 
-      <hr style={{ border: "0", borderTop: "1px solid #eee", margin: "20px 0" }} />
+      <h3 style={{ marginTop: "30px", marginBottom: "15px", color: "#333" }}>Mentors Awaiting Verification</h3>
       
-      <h3 style={{ color: "#444", marginBottom: "15px" }}>Mentors Awaiting Verification</h3>
       {pendingMentors.length === 0 ? (
-        <p style={{ color: "#777", backgroundColor: "#f9f9f9", padding: "15px", borderRadius: "5px", border: "1px solid #eee" }}>
-          No mentors currently awaiting verification. Everything is up to date! ✅
-        </p>
+        <div style={{ padding: "30px", background: "#f9f9f9", borderRadius: "6px", border: "1px dashed #ccc", textAlign: "center", color: "#666" }}>
+          <p style={{ margin: 0, fontWeight: "500" }}>No mentors awaiting verification. All caught up! ✨</p>
+        </div>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "15px", boxShadow: "0 2px 5px rgba(0,0,0,0.02)" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", boxShadow: "0 2px 5px rgba(0,0,0,0.05)", borderRadius: "6px", overflow: "hidden" }}>
           <thead>
-            <tr style={{ backgroundColor: "#f2f2f2", textAlign: "left" }}>
-              <th style={{ padding: "12px", borderBottom: "2px solid #ddd", color: "#555" }}>ID</th>
-              <th style={{ padding: "12px", borderBottom: "2px solid #ddd", color: "#555" }}>Full Name</th>
-              <th style={{ padding: "12px", borderBottom: "2px solid #ddd", color: "#555" }}>Email Address</th>
-              <th style={{ padding: "12px", borderBottom: "2px solid #ddd", color: "#555" }}>Action</th>
+            <tr style={{ textAlign: "left", backgroundColor: "#f4f6f8", borderBottom: "2px solid #ddd" }}>
+              <th style={{ padding: "12px 15px" }}>ID</th>
+              <th style={{ padding: "12px 15px" }}>Avatar</th>
+              <th style={{ padding: "12px 15px" }}>Name</th>
+              <th style={{ padding: "12px 15px" }}>Email</th>
+              <th style={{ padding: "12px 15px", textAlign: "center" }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {pendingMentors.map((mentor) => (
-              <tr key={mentor.id} style={{ transition: "background 0.2s" }}>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#666" }}>{mentor.id}</td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}><strong>{mentor.name}</strong></td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#444" }}>{mentor.email}</td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>
+              <tr key={mentor.id} style={{ borderBottom: "1px solid #eee", verticalAlign: "middle" }}>
+                <td style={{ padding: "12px 15px", color: "#666", fontSize: "14px" }}>{mentor.id}</td>
+                
+                {/* 🖼️ DEFAULT PROFILE PICTURE DISPLAY ADDED HERE */}
+                <td style={{ padding: "12px 15px" }}>
+                  <img 
+                    src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
+                    alt="Default Mentor Profile" 
+                    style={{ width: "40px", height: "40px", borderRadius: "50%", display: "block" }}
+                  />
+                </td>
+
+                <td style={{ padding: "12px 15px", fontWeight: "bold", color: "#2c3e50" }}>{mentor.name}</td>
+                <td style={{ padding: "12px 15px", color: "#555" }}>{mentor.email}</td>
+                <td style={{ padding: "12px 15px", textAlign: "center" }}>
                   <button 
                     onClick={() => handleApprove(mentor.id)}
                     style={{ 
@@ -102,14 +100,12 @@ export default function AdminDashboard() {
                       border: "none", 
                       padding: "8px 16px", 
                       cursor: "pointer", 
-                      borderRadius: "4px", 
+                      borderRadius: "4px",
                       fontWeight: "bold",
-                      transition: "background 0.2s"
+                      fontSize: "13px"
                     }}
-                    onMouseOver={(e) => e.target.style.backgroundColor = "#388E3C"}
-                    onMouseOut={(e) => e.target.style.backgroundColor = "#4CAF50"}
                   >
-                    Approve Mentor
+                    Approve
                   </button>
                 </td>
               </tr>
