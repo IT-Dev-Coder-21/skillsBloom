@@ -64,6 +64,7 @@ app.get("/users", (req, res) => {
 });
 
 // REGISTRATION WITH 8-CHARACTER PASSWORD SHIELD
+// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -82,7 +83,36 @@ app.post("/register", (req, res) => {
   const sql = "INSERT INTO users (id, name, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)";
   db.query(sql, [randomId, name, email, password, normalizedRole, isApproved], (err, result) => {
     if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage });
-    res.json({ success: true, message: "User registered successfully ✅" });
+
+    // 📩 1. ALERT EMAIL TO YOU (The Admin)
+    const adminMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: "otanieljane@gmail.com",
+      subject: "🚨 New User Registration Alert - Skills Bloom",
+      text: `Hello Admin,\n\nA new user has registered on Skills Bloom!\n\nDetails:\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}\n- Account Status: ${isApproved === 1 ? 'Automatically Approved' : 'Pending Admin Approval'}\n\nBest regards,\nYour Server`
+    };
+
+    transporter.sendMail(adminMailOptions, (error) => {
+      if (error) console.log("Admin notification email error ❌:", error);
+    });
+
+    // 📩 2. WELCOME/WAIT EMAIL TO THE REGISTERED USER
+    const userMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email, // Sends directly to the user's input email
+      subject: "Welcome to Skills Bloom! 🌱 Account Received",
+      text: `Hello ${name},\n\nThank you for registering an account with Skills Bloom as a ${normalizedRole}!\n\nYour details have been successfully received. Please wait for your official confirmation email from our team before attempting to log in.\n\nWe look forward to blooming with you!\n\nBest regards,\nSkills Bloom Team 🌸`
+    };
+
+    transporter.sendMail(userMailOptions, (error) => {
+      if (error) console.log("User welcome email error ❌:", error);
+    });
+
+    // Send successful response with your custom message back to React
+    res.json({ 
+      success: true, 
+      message: "Account created successfully! Please check your inbox and wait for your confirmation email. 📥" 
+    });
   });
 });
 

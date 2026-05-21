@@ -21,20 +21,22 @@ function Login() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async () => {
+  // 🛠️ Updated to handle the event object 'e' from form submission
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault(); // Prevents the browser from reloading the page
+
     // 1. Basic required fields check
     if (!form.email || !form.password || (isRegister && !form.name)) {
       setStatusMessage({ text: "Please fill in all required fields! ⚠️", type: "error" });
       return;
     }
 
-    // 2. 🔒 New 8-Character Password Validation (Applies when creating a new account)
+    // 2. 🔒 8-Character Password Validation
     if (isRegister && form.password.length < 8) {
       setStatusMessage({ text: "Password must be at least 8 characters long! 🔑", type: "error" });
       return;
     }
 
-    // Correctly using the dynamic URL from config.js
     const url = isRegister
       ? `${API_BASE_URL}/register`
       : `${API_BASE_URL}/login`;
@@ -125,7 +127,8 @@ function Login() {
 
       <section className="login-hero">
         <div className="login-content">
-          <div className="auth-container">
+          {/* 🛠️ CHANGED FROM <div> TO An ACTUAL <form> */}
+          <form onSubmit={handleSubmit} className="auth-container">
             <h1>{isRegister ? "Create Account" : "Welcome"}</h1>
             
             {statusMessage.text && (
@@ -147,10 +150,10 @@ function Login() {
             </select>
 
             {isRegister && (
-              <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} />
+              <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} required />
             )}
 
-            <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} />
+            <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
             <input 
               type="password" 
               name="password" 
@@ -158,15 +161,17 @@ function Login() {
               value={form.password} 
               onChange={handleChange}
               minLength={isRegister ? 8 : undefined}
+              required
             />
 
-            <button onClick={handleSubmit} className="login-btn">{isRegister ? "Sign Up" : "Login"}</button>
+            {/* 🛠️ CHANGED TO type="submit" */}
+            <button type="submit" className="login-btn">{isRegister ? "Sign Up" : "Login"}</button>
 
             <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} 
                style={{ cursor: "pointer", marginTop: "15px" }}>
               {isRegister ? "Already have an account? Login" : "Don't have an account? Sign up"}
             </p>
-          </div>
+          </form>
         </div>
       </section>
     </>
