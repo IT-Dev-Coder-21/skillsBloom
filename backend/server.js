@@ -133,7 +133,7 @@ app.post("/bookings", (req, res) => {
 
       const studentMailOptions = {
         from: process.env.EMAIL_USER,
-        to: studentEmail,
+        to: email,
         subject: "Your Mentorship Session is Confirmed! 🎉",
         text: `Hello ${studentName},\n\nYour session with ${mentorName} is confirmed for ${date} at ${time}.\nObjective: ${objective}\n\nBest regards,\nSkills Bloom Team`
       };
@@ -145,7 +145,7 @@ app.post("/bookings", (req, res) => {
       if (mentorEmail) {
         const mentorMailOptions = {
           from: process.env.EMAIL_USER,
-          to: mentorEmail,
+          to: email,
           subject: "New Mentorship Booking Notification! 📅",
           text: `Hello ${mentorName},\n\nA student has booked a session with you!\n\nDetails:\n- Student Name: ${studentName}\n- Date: ${date}\n- Time: ${time}\n- Objective: ${objective}\n\nPlease prepare accordingly.\n\nBest regards,\nSkills Bloom Team`
         };
