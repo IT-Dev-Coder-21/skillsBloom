@@ -38,8 +38,8 @@ db.connect((err) => {
 // 🛠️ NODEMAILER TRANSPORTER (UPDATED: REMOVED service: 'gmail' TO FORCE IPv4)
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // Uses SSL/TLS
+  port: 587,
+  secure: false, // Uses TLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
