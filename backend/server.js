@@ -46,7 +46,14 @@ const transporter = nodemailer.createTransport({
 
 // ROUTES
 app.get("/test", (req, res) => res.send("Test works"));
-
+// Root route to welcome visitors and prevent "Cannot GET /"
+app.get("/", (req, res) => {
+  res.json({
+    message: "Welcome to the Skills Bloom API Server! 🌸",
+    status: "Active & Connected to Render Database",
+    version: "1.0.0"
+  });
+});
 app.get("/users", (req, res) => {
   db.query("SELECT * FROM users", (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
