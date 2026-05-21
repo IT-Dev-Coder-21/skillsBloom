@@ -4,7 +4,6 @@ console.log("SERVER FILE IS RUNNING IN PRODUCTION MODE");
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-const nodemailer = require("nodemailer");
 
 const app = express();
 
@@ -35,30 +34,43 @@ db.connect((err) => {
   }
 });
 
-// 🛠️ NODEMAILER TRANSPORTER (UPDATED: REMOVED service: 'gmail' TO FORCE IPv4)
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Uses TLS
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  // Strictly forces Node.js to use IPv4 only and prevents Nodemailer from defaulting to unreachable IPv6 links
-  dnsLookup: (hostname, options, callback) => {
-    require('dns').lookup(hostname, { family: 4 }, callback);
+// 🚀 CLOUD-FRIENDLY HTTP EMAIL FUNCTION (Replaces Nodemailer SMTP)
+async function sendEmailViaHTTP({ to, subject, textContent }) {
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": process.env.BREVO_API_KEY, // Set this environment variable in Render
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        sender: { name: "Skills Bloom Team", email: process.env.EMAIL_USER }, // Make sure this is an email authorized in your Brevo profile
+        to: [{ email: to }],
+        subject: subject,
+        textContent: textContent
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.log("Brevo API Delivery Issue ❌:", data);
+    } else {
+      console.log(`Email successfully routed to ${to} via HTTP API ✅`);
+    }
+  } catch (error) {
+    console.error("Failed to make email API request ❌:", error);
   }
-});
+}
 
 // ROUTES
 app.get("/test", (req, res) => res.send("Test works"));
 
-// Root route to welcome visitors and prevent "Cannot GET /"
 app.get("/", (req, res) => {
   res.json({
     message: "Welcome to the Skills Bloom API Server! 🌸",
     status: "Active & Connected to Render Database",
-    version: "1.0.0"
+    version: "1.1.0"
   });
 });
 
@@ -69,11 +81,10 @@ app.get("/users", (req, res) => {
   });
 });
 
-// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD
+// REGISTRATION ENDPOINT
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
 
-  // 🔒 BACKEND PASSWORD VALIDATION SHIELD
   if (!password || password.length < 8) {
     return res.status(400).json({ 
       success: false, 
@@ -89,31 +100,20 @@ app.post("/register", (req, res) => {
   db.query(sql, [randomId, name, email, password, normalizedRole, isApproved], (err, result) => {
     if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage });
 
-    // 📩 1. ALERT EMAIL TO YOU (The Admin)
-    const adminMailOptions = {
-      from: process.env.EMAIL_USER,
+    // 📩 1. ADMIN REGISTRATION ALERT VIA HTTP
+    sendEmailViaHTTP({
       to: "otanieljane@gmail.com",
       subject: "🚨 New User Registration Alert - Skills Bloom",
-      text: `Hello Admin,\n\nA new user has registered on Skills Bloom!\n\nDetails:\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}\n- Account Status: ${isApproved === 1 ? 'Automatically Approved' : 'Pending Admin Approval'}\n\nBest regards,\nYour Server`
-    };
-
-    transporter.sendMail(adminMailOptions, (error) => {
-      if (error) console.log("Admin notification email error ❌:", error);
+      textContent: `Hello Admin,\n\nA new user has registered on Skills Bloom!\n\nDetails:\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}\n- Account Status: ${isApproved === 1 ? 'Automatically Approved' : 'Pending Admin Approval'}\n\nBest regards,\nYour Server`
     });
 
-    // 📩 2. WELCOME/WAIT EMAIL TO THE REGISTERED USER
-    const userMailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email, // Sends directly to the user's input email
+    // 📩 2. STUDENT/MENTOR WELCOME CONFIRMATION VIA HTTP
+    sendEmailViaHTTP({
+      to: email,
       subject: "Welcome to Skills Bloom! 🌱 Account Received",
-      text: `Hello ${name},\n\nThank you for registering an account with Skills Bloom as a ${normalizedRole}!\n\nYour details have been successfully received. Please wait for your official confirmation email from our team before attempting to log in.\n\nWe look forward to blooming with you!\n\nBest regards,\nSkills Bloom Team 🌸`
-    };
-
-    transporter.sendMail(userMailOptions, (error) => {
-      if (error) console.log("User welcome email error ❌:", error);
+      textContent: `Hello ${name},\n\nThank you for registering an account with Skills Bloom as a ${normalizedRole}!\n\nYour details have been successfully received. Please wait for your official confirmation email from our team before attempting to log in.\n\nWe look forward to blooming with you!\n\nBest regards,\nSkills Bloom Team 🌸`
     });
 
-    // Send successful response with your custom message back to React
     res.json({ 
       success: true, 
       message: "Account created successfully! Please check your inbox and wait for your confirmation email. 📥" 
@@ -169,37 +169,25 @@ app.post("/bookings", (req, res) => {
       mentorEmail = mentorResult[0].email;
     }
 
-    // Generate a numeric ID using the current time milliseconds
     const forcedBookingId = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 1000);
-
     const sql = "INSERT INTO bookings (id, studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?, ?)";
     
     db.query(sql, [forcedBookingId, studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
       if (err) return res.status(500).json({ success: false, errorDetails: err.message });
 
-      // Fixed 'to' address value to send mail to the student correctly
-      const studentMailOptions = {
-        from: process.env.EMAIL_USER,
-        to: studentEmail, 
+      // 📩 3. STUDENT BOOKING CONFIRMATION VIA HTTP
+      sendEmailViaHTTP({
+        to: studentEmail,
         subject: "Your Mentorship Session is Confirmed! 🎉",
-        text: `Hello ${studentName},\n\nYour session with ${mentorName} is confirmed for ${date} at ${time}.\nObjective: ${objective}\n\nBest regards,\nSkills Bloom Team`
-      };
-
-      transporter.sendMail(studentMailOptions, (error) => {
-        if (error) console.log("Student email error:", error);
+        textContent: `Hello ${studentName},\n\nYour session with ${mentorName} is confirmed for ${date} at ${time}.\nObjective: ${objective}\n\nBest regards,\nSkills Bloom Team`
       });
 
-      // Fixed 'to' address value to send mail to the mentor correctly
+      // 📩 4. MENTOR BOOKING ALERT VIA HTTP
       if (mentorEmail) {
-        const mentorMailOptions = {
-          from: process.env.EMAIL_USER,
+        sendEmailViaHTTP({
           to: mentorEmail,
           subject: "New Mentorship Booking Notification! 📅",
-          text: `Hello ${mentorName},\n\nA student has booked a session with you!\n\nDetails:\n- Student Name: ${studentName}\n- Date: ${date}\n- Time: ${time}\n- Objective: ${objective}\n\nPlease prepare accordingly.\n\nBest regards,\nSkills Bloom Team`
-        };
-
-        transporter.sendMail(mentorMailOptions, (error) => {
-          if (error) console.log("Mentor email error:", error);
+          textContent: `Hello ${mentorName},\n\nA student has booked a session with you!\n\nDetails:\n- Student Name: ${studentName}\n- Date: ${date}\n- Time: ${time}\n- Objective: ${objective}\n\nPlease prepare accordingly.\n\nBest regards,\nSkills Bloom Team`
         });
       }
 
