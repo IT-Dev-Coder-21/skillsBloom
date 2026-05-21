@@ -35,17 +35,16 @@ db.connect((err) => {
   }
 });
 
-// 🛠️ NODEMAILER TRANSPORTER (UPDATED: FIXED IPv6 ENETUNREACH ERROR BY FORCING IPv4)
+// 🛠️ NODEMAILER TRANSPORTER (UPDATED: REMOVED service: 'gmail' TO FORCE IPv4)
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
-  secure: true,
-  service: 'gmail',
+  secure: true, // Uses SSL/TLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  // This bypasses broken hosting network setups by ignoring unreachable IPv6 connections
+  // Strictly forces Node.js to use IPv4 only and prevents Nodemailer from defaulting to unreachable IPv6 links
   dnsLookup: (hostname, options, callback) => {
     require('dns').lookup(hostname, { family: 4 }, callback);
   }
