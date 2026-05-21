@@ -122,14 +122,14 @@ app.post("/bookings", (req, res) => {
       mentorEmail = mentorResult[0].email;
     }
 
-    // 🌟 REMOVED randomBookingId because MySQL AUTO_INCREMENT handles it now!
-    const sql = "INSERT INTO bookings (studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?)";
-    
-    db.query(sql, [studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
-      if (err) return res.status(500).json({ success: false, errorDetails: err.message });
+    // 🌟 FORCED FIX: Generate a numeric ID using the current time milliseconds
+    // This ensures an ID is always sent, bypassing the "no default value" database error.
+    const forcedBookingId = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 1000);
 
-      // Grab the auto-generated ID from MySQL to send back to the frontend
-      const newBookingId = result.insertId;
+    const sql = "INSERT INTO bookings (id, studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    
+    db.query(sql, [forcedBookingId, studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
+      if (err) return res.status(500).json({ success: false, errorDetails: err.message });
 
       const studentMailOptions = {
         from: process.env.EMAIL_USER,
@@ -155,7 +155,7 @@ app.post("/bookings", (req, res) => {
         });
       }
 
-      res.status(200).json({ success: true, id: newBookingId });
+      res.status(200).json({ success: true, id: forcedBookingId });
     });
   });
 });
