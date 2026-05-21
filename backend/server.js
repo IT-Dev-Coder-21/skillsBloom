@@ -35,12 +35,19 @@ db.connect((err) => {
   }
 });
 
-// NODEMAILER TRANSPORTER
+// 🛠️ NODEMAILER TRANSPORTER (UPDATED: FIXED IPv6 ENETUNREACH ERROR BY FORCING IPv4)
 const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
+  },
+  // This bypasses broken hosting network setups by ignoring unreachable IPv6 connections
+  dnsLookup: (hostname, options, callback) => {
+    require('dns').lookup(hostname, { family: 4 }, callback);
   }
 });
 
@@ -63,7 +70,6 @@ app.get("/users", (req, res) => {
   });
 });
 
-// REGISTRATION WITH 8-CHARACTER PASSWORD SHIELD
 // REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
