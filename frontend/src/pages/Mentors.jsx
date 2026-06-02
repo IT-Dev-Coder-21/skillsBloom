@@ -1,12 +1,13 @@
 import API_BASE_URL from "./config"; // ✅ Configuration bridge ready for live deployment synchronization
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Mentors() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mentors, setMentors] = useState([]);
   const navigate = useNavigate(); 
 
-  const mentors = [
+  const hardcodedMentors = [
     {
       name: "Alice Musukwa",
       role: "Fullstack Developer",
@@ -29,6 +30,43 @@ export default function Mentors() {
       skills: ["UI/UX", "React", "TypeScript", "CSS"]
     }
   ];
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/mentors`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch mentors");
+        return res.json();
+      })
+      .then((data) => {
+        const dynamicMentors = data.map(m => {
+          let parsedSkills = [];
+          try {
+            parsedSkills = typeof m.skills === 'string' ? JSON.parse(m.skills) : (Array.isArray(m.skills) ? m.skills : []);
+          } catch(e) {
+            parsedSkills = m.skills ? m.skills.split(',').map(s => s.trim()) : [];
+          }
+          return {
+            name: m.name,
+            role: m.title || "Faculty Mentor",
+            bio: m.bio || "No biography provided yet.",
+            image: m.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+            skills: parsedSkills
+          };
+        });
+
+        const merged = [...hardcodedMentors];
+        dynamicMentors.forEach(dm => {
+          if (!merged.some(hm => hm.name.toLowerCase() === dm.name.toLowerCase())) {
+            merged.push(dm);
+          }
+        });
+        setMentors(merged);
+      })
+      .catch((err) => {
+        console.error("Error fetching dynamic mentors:", err);
+        setMentors(hardcodedMentors);
+      });
+  }, []);
 
   return (
     <>

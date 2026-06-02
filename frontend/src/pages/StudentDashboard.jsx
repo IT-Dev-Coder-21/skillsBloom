@@ -6,6 +6,7 @@ export default function StudentDashboard() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState("home");
   const [bookings, setBookings] = useState([]); 
+  const [mentors, setMentors] = useState([]);
   
   // ✅ STATUS BANNER STATE: Replaces the browser alert boxes with clean inline notifications
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
@@ -16,6 +17,66 @@ export default function StudentDashboard() {
     const u = JSON.parse(localStorage.getItem("user"));
     if (!u) return navigate("/login");
     setUser(u);
+
+    const hardcodedMentors = [
+      {
+        name: "Alice Musukwa",
+        role: "Fullstack Developer",
+        bio: "Helping students build modern websites and applications with cutting-edge technologies.",
+        image: "https://media.licdn.com/dms/image/v2/D4D03AQFLDhUysNv2Sw/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1724589862035?e=1780531200&v=beta&t=KaFXonEAeWX8vQGHiwKtC4cmDUx8HdkY-yltuORl-Y8",
+        skills: ["React", "Node.js", "HTML", "SQL", "MongoDB"]
+      },
+      {
+        name: "Sana Abbas",
+        role: "Fullstack Developer",
+        bio: "Guiding students in full-stack development.",
+        image: "https://media.licdn.com/dms/image/v2/C4D03AQEbMg9L9KcgaQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1638369937627?e=1780531200&v=beta&t=CDDlotK-OstXO81vw6-IMqr062Ir4XXNVquuUuAfa7w",
+        skills: ["JavaScript", "Node.js", "Express", "MongoDB"]
+      },
+      {
+        name: "Caroline Mutemi",
+        role: "Software Developer",
+        bio: "Designing beautiful user experiences and building scalable web applications.",
+        image: "https://media.licdn.com/dms/image/v2/D4E03AQEK-u9ItzSbiA/profile-displayphoto-crop_800_800/B4EZsqjqDtIwAI-/0/1765945552767?e=1780531200&v=beta&t=ff-Kgo8JRtKTayRdORKcd5VWM1oklT9P0ux8DzUIrPE",
+        skills: ["UI/UX", "React", "TypeScript", "CSS"]
+      }
+    ];
+
+    // Fetch dynamic mentors
+    fetch(`${API_BASE_URL}/mentors`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch mentors");
+        return res.json();
+      })
+      .then((data) => {
+        const dynamicMentors = data.map(m => {
+          let parsedSkills = [];
+          try {
+            parsedSkills = typeof m.skills === 'string' ? JSON.parse(m.skills) : (Array.isArray(m.skills) ? m.skills : []);
+          } catch(e) {
+            parsedSkills = m.skills ? m.skills.split(',').map(s => s.trim()) : [];
+          }
+          return {
+            name: m.name,
+            role: m.title || "Faculty Mentor",
+            bio: m.bio || "No biography provided yet.",
+            image: m.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+            skills: parsedSkills
+          };
+        });
+
+        const merged = [...hardcodedMentors];
+        dynamicMentors.forEach(dm => {
+          if (!merged.some(hm => hm.name.toLowerCase() === dm.name.toLowerCase())) {
+            merged.push(dm);
+          }
+        });
+        setMentors(merged);
+      })
+      .catch((err) => {
+        console.error("Error fetching mentors:", err);
+        setMentors(hardcodedMentors);
+      });
 
     // ✅ UPDATED ENDPOINT: Using API_BASE_URL instead of localhost
     fetch(`${API_BASE_URL}/bookings`)
@@ -32,13 +93,11 @@ export default function StudentDashboard() {
 
   // 🗑️ HANDLE CANCELLING A SESSION
   const handleCancelBooking = async (bookingId) => {
-    // Keeps a clean safety checkpoint so sessions aren't dropped by accident
     if (!window.confirm("Are you sure you want to cancel this scheduled session? ⏳")) {
       return;
     }
 
     try {
-      // ✅ UPDATED ENDPOINT: Using API_BASE_URL instead of localhost
       const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
         method: "DELETE"
       });
@@ -46,11 +105,7 @@ export default function StudentDashboard() {
 
       if (data.success) {
         setStatusMessage({ text: "Session cancelled successfully! ✅", type: "success" });
-        
-        // Remove from UI instantly
         setBookings(bookings.filter(b => b.id !== bookingId));
-
-        // Auto-clear the message after 3 seconds
         setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
       } else {
         setStatusMessage({ text: data.message || "Failed to cancel the session. ❌", type: "error" });
@@ -62,30 +117,6 @@ export default function StudentDashboard() {
   };
 
   if (!user) return <div className="loading" style={{ padding: "40px", textAlign: "center" }}><h2>Loading Student Workspace...</h2></div>;
-
-  const mentors = [
-    {
-      name: "Alice Musukwa",
-      role: "Fullstack Developer",
-      bio: "Helping students build modern websites and applications with cutting-edge technologies.",
-      image: "https://media.licdn.com/dms/image/v2/D4D03AQFLDhUysNv2Sw/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1724589862035?e=1780531200&v=beta&t=KaFXonEAeWX8vQGHiwKtC4cmDUx8HdkY-yltuORl-Y8",
-      skills: ["React", "Node.js", "HTML", "SQL", "MongoDB"]
-    },
-    {
-      name: "Sana Abbas",
-      role: "Fullstack Developer",
-      bio: "Guiding students in full-stack development.",
-      image: "https://media.licdn.com/dms/image/v2/C4D03AQEbMg9L9KcgaQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1638369937627?e=1780531200&v=beta&t=CDDlotK-OstXO81vw6-IMqr062Ir4XXNVquuUuAfa7w",
-      skills: ["JavaScript", "Node.js", "Express", "MongoDB"]
-    },
-    {
-      name: "Caroline Mutemi",
-      role: "Software Developer",
-      bio: "Designing beautiful user experiences and building scalable web applications.",
-      image: "https://media.licdn.com/dms/image/v2/D4E03AQEK-u9ItzSbiA/profile-displayphoto-crop_800_800/B4EZsqjqDtIwAI-/0/1765945552767?e=1780531200&v=beta&t=ff-Kgo8JRtKTayRdORKcd5VWM1oklT9P0ux8DzUIrPE",
-      skills: ["UI/UX", "React", "TypeScript", "CSS"]
-    }
-  ];
 
   return (
     <div className="dashboard-page">

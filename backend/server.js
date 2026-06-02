@@ -17,23 +17,65 @@ app.use(cors({
 
 app.use(express.json());
 
-// DATABASE CONNECTION
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
-  ssl: { rejectUnauthorized: false }
-});
+const bcrypt = require("bcryptjs");
 
-db.connect((err) => {
-  if (err) {
-    console.log("MySQL Connection Error ❌:", err);
-  } else {
-    console.log("MySQL Connected Successfully ✅");
-  }
-});
+// DATABASE CONNECTION
+const db = !process.env.DB_HOST
+  ? require("./dbMock")
+  : mysql.createConnection({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT || 3306,
+      ssl: { rejectUnauthorized: false }
+    });
+
+if (process.env.DB_HOST) {
+  db.connect((err) => {
+    if (err) {
+      console.log("MySQL Connection Error ❌:", err);
+    } else {
+      console.log("MySQL Connected Successfully ✅");
+      initializeRealDatabaseSchema();
+    }
+  });
+} else {
+  console.log("MySQL Database Mock Connected Successfully ✅");
+}
+
+function addColumnIfNotExists(columnName, columnType) {
+  db.query(`ALTER TABLE users ADD COLUMN ${columnName} ${columnType}`, (err) => {
+    if (err) {
+      if (err.code === 'ER_DUP_FIELDNAME' || err.message.includes("Duplicate column name")) {
+        // Already exists, ignore
+      } else {
+        console.warn(`Could not add column ${columnName}:`, err.message);
+      }
+    }
+  });
+}
+
+function initializeRealDatabaseSchema() {
+  addColumnIfNotExists("bio", "TEXT");
+  addColumnIfNotExists("skills", "TEXT");
+  addColumnIfNotExists("image", "TEXT");
+  addColumnIfNotExists("title", "VARCHAR(255)");
+
+  const createAvailTable = `
+    CREATE TABLE IF NOT EXISTS mentor_availability (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      mentor_id INT NOT NULL,
+      day_of_week VARCHAR(20) NOT NULL,
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `;
+  db.query(createAvailTable, (err) => {
+    if (err) console.error("Schema Migration Error on creating mentor_availability:", err);
+  });
+}
 
 // 🚀 CLOUD-FRIENDLY HTTP EMAIL FUNCTION (Replaces Nodemailer SMTP)
 async function sendEmailViaHTTP({ to, subject, textContent }) {
@@ -83,7 +125,52 @@ app.get("/users", (req, res) => {
   });
 });
 
-// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD
+// GET APPROVED MENTORS FOR DYNAMIC DISPLAY
+app.get("/mentors", (req, res) => {
+  db.query("SELECT id, name, email, bio, skills, image, title FROM users WHERE role = 'mentor' AND is_approved = 1", (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// UPDATE MENTOR PROFILE DETAILS
+app.put("/mentors/profile", (req, res) => {
+  const { title, bio, skills, image, id } = req.body;
+  const skillsStr = Array.isArray(skills) ? JSON.stringify(skills) : skills;
+  const sql = "UPDATE users SET title = ?, bio = ?, skills = ?, image = ? WHERE id = ?";
+  db.query(sql, [title, bio, skillsStr, image, id], (err, result) => {
+    if (err) return res.status(500).json({ success: false, message: err.message });
+    res.json({ success: true, message: "Profile updated successfully! ✅" });
+  });
+});
+
+// GET WEEKLY AVAILABILITY FOR A MENTOR
+app.get("/mentors/:id/availability", (req, res) => {
+  db.query("SELECT * FROM mentor_availability WHERE mentor_id = ?", [req.params.id], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// ADD WEEKLY AVAILABILITY FOR A MENTOR
+app.post("/mentors/availability", (req, res) => {
+  const { mentorId, dayOfWeek, startTime, endTime } = req.body;
+  const sql = "INSERT INTO mentor_availability (mentor_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?)";
+  db.query(sql, [mentorId, dayOfWeek, startTime, endTime], (err, result) => {
+    if (err) return res.status(500).json({ success: false, message: err.message });
+    res.json({ success: true, message: "Availability added!" });
+  });
+});
+
+// DELETE WEEKLY AVAILABILITY SLOT
+app.delete("/mentors/availability/:id", (req, res) => {
+  db.query("DELETE FROM mentor_availability WHERE id = ?", [req.params.id], (err, result) => {
+    if (err) return res.status(500).json({ success: false, message: err.message });
+    res.json({ success: true, message: "Availability removed successfully! ✅" });
+  });
+});
+
+// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD (HASHED WITH BCRYPT)
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -99,28 +186,32 @@ app.post("/register", (req, res) => {
   const isApproved = normalizedRole === 'mentor' ? 0 : 1; 
   const randomId = Math.floor(Math.random() * 999999);
 
-  const sql = "INSERT INTO users (id, name, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)";
-  db.query(sql, [randomId, name, email, password, normalizedRole, isApproved], (err, result) => {
-    if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage });
+  bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
+    if (hashErr) return res.status(500).json({ success: false, message: "Server hashing error." });
 
-    // 📩 1. ALERT EMAIL TO YOU (The Admin)
-    sendEmailViaHTTP({
-      to: "otanieljane@gmail.com",
-      subject: "🚨 New User Registration Alert - Skills Bloom",
-      textContent: `Hello Admin,\n\nA new user has registered on Skills Bloom!\n\nDetails:\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}\n- Account Status: ${isApproved === 1 ? 'Automatically Approved' : 'Pending Admin Approval'}\n\n Thank You!,`
-    });
+    const sql = "INSERT INTO users (id, name, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)";
+    db.query(sql, [randomId, name, email, hashedPassword, normalizedRole, isApproved], (err, result) => {
+      if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage || err.message });
 
-    // 📩 2. WELCOME/WAIT EMAIL TO THE REGISTERED USER
-    sendEmailViaHTTP({
-      to: email,
-      subject: "Welcome to Skills Bloom! 🌱 Account Received",
-      textContent: `Hello ${name},\n\nThank you for registering an account with Skills Bloom as a ${normalizedRole}!\n\nYour details have been successfully received. Please wait for your official confirmation email from our team before attempting to log in.\n\nWe look forward to blooming with you!\n\nBest regards,\nSkills Bloom Team 🌸`
-    });
+      // 📩 1. ALERT EMAIL TO YOU (The Admin)
+      sendEmailViaHTTP({
+        to: "otanieljane@gmail.com",
+        subject: "🚨 New User Registration Alert - Skills Bloom",
+        textContent: `Hello Admin,\n\nA new user has registered on Skills Bloom!\n\nDetails:\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}\n- Account Status: ${isApproved === 1 ? 'Automatically Approved' : 'Pending Admin Approval'}\n\n Thank You!,`
+      });
 
-    // Send successful response with your custom message back to React
-    res.json({ 
-      success: true, 
-      message: "Account created successfully! Please check your inbox and wait for your confirmation email. 📥" 
+      // 📩 2. WELCOME/WAIT EMAIL TO THE REGISTERED USER
+      sendEmailViaHTTP({
+        to: email,
+        subject: "Welcome to Skills Bloom! 🌱 Account Received",
+        textContent: `Hello ${name},\n\nThank you for registering an account with Skills Bloom as a ${normalizedRole}!\n\nYour details have been successfully received. Please wait for your official confirmation email from our team before attempting to log in.\n\nWe look forward to blooming with you!\n\nBest regards,\nSkills Bloom Team 🌸`
+      });
+
+      // Send successful response with your custom message back to React
+      res.json({ 
+        success: true, 
+        message: "Account created successfully! Please check your inbox and wait for your confirmation email. 📥" 
+      });
     });
   });
 });
@@ -128,10 +219,34 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
   const sql = "SELECT * FROM users WHERE email = ?";
-  db.query(sql, [email], (err, result) => {
+  db.query(sql, [email], async (err, result) => {
     if (err) return res.status(500).json({ success: false, message: "Server error." });
-    if (result.length > 0 && result[0].password === password) {
-      res.json({ success: true, message: "Login successful", user: result[0] });
+    if (result.length > 0) {
+      const storedPassword = result[0].password;
+      let isMatch = false;
+
+      // Check if storedPassword looks like a bcrypt hash (starts with $2a$ or $2b$)
+      if (storedPassword && (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$"))) {
+        isMatch = await bcrypt.compare(password, storedPassword);
+      } else {
+        // Plaintext fallback
+        isMatch = (password === storedPassword);
+        if (isMatch) {
+          // Auto-migrate to bcrypt hash in the background
+          try {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, result[0].id]);
+          } catch (migrateErr) {
+            console.error("Failed to migrate password hash in background:", migrateErr);
+          }
+        }
+      }
+
+      if (isMatch) {
+        res.json({ success: true, message: "Login successful", user: result[0] });
+      } else {
+        res.json({ success: false, message: "Invalid credentials" });
+      }
     } else {
       res.json({ success: false, message: "Invalid credentials" });
     }
