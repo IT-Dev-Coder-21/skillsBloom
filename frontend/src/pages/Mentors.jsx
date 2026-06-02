@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 export default function Mentors() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mentors, setMentors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate(); 
 
   const hardcodedMentors = [
@@ -61,10 +62,12 @@ export default function Mentors() {
           }
         });
         setMentors(merged);
+        setIsLoading(false);
       })
       .catch((err) => {
         console.error("Error fetching dynamic mentors:", err);
         setMentors(hardcodedMentors);
+        setIsLoading(false);
       });
   }, []);
 
@@ -108,25 +111,32 @@ export default function Mentors() {
         <div className="container">
           <h2>Meet Our Mentors</h2>
 
-          <div className="mentors-grid">
-            {mentors.map((mentor, index) => (
-              <div key={index} className="mentor-card">
-                <img src={mentor.image} alt={mentor.name} />
-                <h3>{mentor.name}</h3>
-                <p className="mentor-role-title">{mentor.role}</p>
-                <small>{mentor.bio}</small>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+              <p style={{ fontSize: '18px', color: '#666' }}>Loading mentors...</p>
+            </div>
+          ) : (
+            <div className="mentors-grid">
+              {mentors.map((mentor, index) => (
+                <div key={index} className="mentor-card">
+                  <img src={mentor.image} alt={mentor.name} />
+                  <h3>{mentor.name}</h3>
+                  <p className="mentor-role-title">{mentor.role}</p>
+                  <small>{mentor.bio}</small>
 
-                {/* ✅ DYNAMIC SKILLS RENDER: Displaying the skills list as clean, stylized inline badges */}
-                <div className="mentor-skills-container" style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
-                  {mentor.skills.map((skill, sIdx) => (
-                    <span key={sIdx} className="skill-badge" style={{ background: '#f3e5f5', color: '#7b1fa2', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>
-                      {skill}
-                    </span>
-                  ))}
+                  {/* ✅ DYNAMIC SKILLS RENDER: Displaying the skills list as clean, stylized inline badges */}
+                  <div className="mentor-skills-container" style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
+                    {mentor.skills.map((skill, sIdx) => (
+                      <span key={sIdx} className="skill-badge" style={{ background: '#f3e5f5', color: '#7b1fa2', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
