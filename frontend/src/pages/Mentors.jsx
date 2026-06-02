@@ -1,34 +1,18 @@
-import API_BASE_URL from "./config"; // ✅ Configuration bridge ready for live deployment synchronization
-import { useState } from "react";
+import API_BASE_URL from "./config";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Mentors() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mentors, setMentors] = useState([]);
   const navigate = useNavigate(); 
 
-  const mentors = [
-    {
-      name: "Alice Musukwa",
-      role: "Fullstack Developer",
-      bio: "Helping students build modern websites and applications with cutting-edge technologies.",
-      image: "https://media.licdn.com/dms/image/v2/D4D03AQFLDhUysNv2Sw/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1724589862035?e=1780531200&v=beta&t=KaFXonEAeWX8vQGHiwKtC4cmDUx8HdkY-yltuORl-Y8",
-      skills: ["React", "Node.js", "HTML", "SQL", "MongoDB"]
-    },
-    {
-      name: "Sana Abbas",
-      role: "Fullstack Developer",
-      bio: "Guiding students in full-stack development.",
-      image: "https://media.licdn.com/dms/image/v2/C4D03AQEbMg9L9KcgaQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1638369937627?e=1780531200&v=beta&t=CDDlotK-OstXO81vw6-IMqr062Ir4XXNVquuUuAfa7w",
-      skills: ["JavaScript", "Node.js", "Express", "MongoDB"]
-    },
-    {
-      name: "Caroline Mutemi",
-      role: "Software Developer",
-      bio: "Designing beautiful user experiences and building scalable web applications.",
-      image: "https://media.licdn.com/dms/image/v2/D4E03AQEK-u9ItzSbiA/profile-displayphoto-crop_800_800/B4EZsqjqDtIwAI-/0/1765945552767?e=1780531200&v=beta&t=ff-Kgo8JRtKTayRdORKcd5VWM1oklT9P0ux8DzUIrPE",
-      skills: ["UI/UX", "React", "TypeScript", "CSS"]
-    }
-  ];
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/mentors`)
+      .then(res => setMentors(res.data))
+      .catch(err => console.error(err));
+  }, []);
 
   return (
     <>
@@ -73,14 +57,14 @@ export default function Mentors() {
           <div className="mentors-grid">
             {mentors.map((mentor, index) => (
               <div key={index} className="mentor-card">
-                <img src={mentor.image} alt={mentor.name} />
+                <img src={mentor.image || "https://via.placeholder.com/150"} alt={mentor.name} />
                 <h3>{mentor.name}</h3>
                 <p className="mentor-role-title">{mentor.role}</p>
                 <small>{mentor.bio}</small>
 
                 {/* ✅ DYNAMIC SKILLS RENDER: Displaying the skills list as clean, stylized inline badges */}
                 <div className="mentor-skills-container" style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
-                  {mentor.skills.map((skill, sIdx) => (
+                  {mentor.skills && JSON.parse(mentor.skills).map((skill, sIdx) => (
                     <span key={sIdx} className="skill-badge" style={{ background: '#f3e5f5', color: '#7b1fa2', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>
                       {skill}
                     </span>

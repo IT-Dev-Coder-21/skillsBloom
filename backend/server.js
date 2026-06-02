@@ -64,8 +64,30 @@ async function sendEmailViaHTTP({ to, subject, textContent }) {
   }
 }
 
-// ROUTES
-app.get("/test", (req, res) => res.send("Test works"));
+app.get("/mentors", (req, res) => {
+  db.query("SELECT id, name, email, bio, skills FROM users WHERE role = 'mentor' AND is_approved = 1", (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// AVAILABILITY ROUTES
+app.get("/mentors/:id/availability", (req, res) => {
+  db.query("SELECT * FROM mentor_availability WHERE mentor_id = ?", [req.params.id], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post("/mentors/availability", (req, res) => {
+  const { mentorId, day, startTime, endTime } = req.body;
+  const sql = "INSERT INTO mentor_availability (mentor_id, day, start_time, end_time) VALUES (?, ?, ?, ?)";
+  db.query(sql, [mentorId, day, startTime, endTime], (err, result) => {
+    if (err) return res.status(500).json({ success: false, message: err.message });
+    res.json({ success: true, message: "Availability added!" });
+  });
+});
+
 
 // Root route to welcome visitors and prevent "Cannot GET /"
 app.get("/", (req, res) => {

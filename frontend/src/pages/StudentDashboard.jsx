@@ -1,11 +1,13 @@
 import API_BASE_URL from "./config"; // ✅ Added configuration bridge for production/live environments
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function StudentDashboard() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState("home");
   const [bookings, setBookings] = useState([]); 
+  const [mentors, setMentors] = useState([]);
   
   // ✅ STATUS BANNER STATE: Replaces the browser alert boxes with clean inline notifications
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
@@ -16,6 +18,43 @@ export default function StudentDashboard() {
     const u = JSON.parse(localStorage.getItem("user"));
     if (!u) return navigate("/login");
     setUser(u);
+
+    const hardcodedMentors = [
+      {
+        name: "Alice Musukwa",
+        role: "Fullstack Developer",
+        bio: "Helping students build modern websites and applications with cutting-edge technologies.",
+        image: "https://media.licdn.com/dms/image/v2/D4D03AQFLDhUysNv2Sw/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1724589862035?e=1780531200&v=beta&t=KaFXonEAeWX8vQGHiwKtC4cmDUx8HdkY-yltuORl-Y8",
+        skills: ["React", "Node.js", "HTML", "SQL", "MongoDB"]
+      },
+      {
+        name: "Sana Abbas",
+        role: "Fullstack Developer",
+        bio: "Guiding students in full-stack development.",
+        image: "https://media.licdn.com/dms/image/v2/C4D03AQEbMg9L9KcgaQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1638369937627?e=1780531200&v=beta&t=CDDlotK-OstXO81vw6-IMqr062Ir4XXNVquuUuAfa7w",
+        skills: ["JavaScript", "Node.js", "Express", "MongoDB"]
+      },
+      {
+        name: "Caroline Mutemi",
+        role: "Software Developer",
+        bio: "Designing beautiful user experiences and building scalable web applications.",
+        image: "https://media.licdn.com/dms/image/v2/D4E03AQEK-u9ItzSbiA/profile-displayphoto-crop_800_800/B4EZsqjqDtIwAI-/0/1765945552767?e=1780531200&v=beta&t=ff-Kgo8JRtKTayRdORKcd5VWM1oklT9P0ux8DzUIrPE",
+        skills: ["UI/UX", "React", "TypeScript", "CSS"]
+      }
+    ];
+
+    axios.get(`${API_BASE_URL}/mentors`)
+      .then(res => {
+        const dynamicMentors = res.data.map(m => ({
+          ...m,
+          skills: m.skills ? JSON.parse(m.skills) : []
+        }));
+        setMentors([...hardcodedMentors, ...dynamicMentors]);
+      })
+      .catch(err => {
+        console.error("Error fetching mentors:", err);
+        setMentors(hardcodedMentors);
+      });
 
     // ✅ UPDATED ENDPOINT: Using API_BASE_URL instead of localhost
     fetch(`${API_BASE_URL}/bookings`)
@@ -62,30 +101,6 @@ export default function StudentDashboard() {
   };
 
   if (!user) return <div className="loading" style={{ padding: "40px", textAlign: "center" }}><h2>Loading Student Workspace...</h2></div>;
-
-  const mentors = [
-    {
-      name: "Alice Musukwa",
-      role: "Fullstack Developer",
-      bio: "Helping students build modern websites and applications with cutting-edge technologies.",
-      image: "https://media.licdn.com/dms/image/v2/D4D03AQFLDhUysNv2Sw/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1724589862035?e=1780531200&v=beta&t=KaFXonEAeWX8vQGHiwKtC4cmDUx8HdkY-yltuORl-Y8",
-      skills: ["React", "Node.js", "HTML", "SQL", "MongoDB"]
-    },
-    {
-      name: "Sana Abbas",
-      role: "Fullstack Developer",
-      bio: "Guiding students in full-stack development.",
-      image: "https://media.licdn.com/dms/image/v2/C4D03AQEbMg9L9KcgaQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1638369937627?e=1780531200&v=beta&t=CDDlotK-OstXO81vw6-IMqr062Ir4XXNVquuUuAfa7w",
-      skills: ["JavaScript", "Node.js", "Express", "MongoDB"]
-    },
-    {
-      name: "Caroline Mutemi",
-      role: "Software Developer",
-      bio: "Designing beautiful user experiences and building scalable web applications.",
-      image: "https://media.licdn.com/dms/image/v2/D4E03AQEK-u9ItzSbiA/profile-displayphoto-crop_800_800/B4EZsqjqDtIwAI-/0/1765945552767?e=1780531200&v=beta&t=ff-Kgo8JRtKTayRdORKcd5VWM1oklT9P0ux8DzUIrPE",
-      skills: ["UI/UX", "React", "TypeScript", "CSS"]
-    }
-  ];
 
   return (
     <div className="dashboard-page">
