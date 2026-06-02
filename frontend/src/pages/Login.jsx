@@ -7,6 +7,7 @@ function Login() {
   const [isRegister, setIsRegister] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -37,6 +38,8 @@ function Login() {
       return;
     }
 
+    setIsLoading(true);
+
     const url = isRegister
       ? `${API_BASE_URL}/register`
       : `${API_BASE_URL}/login`;
@@ -60,6 +63,7 @@ function Login() {
             setForm({ name: "", email: "", password: "", role: "student" });
             setIsRegister(false); 
             setStatusMessage({ text: "", type: "" });
+            setIsLoading(false);
           }, 2500);
           return;
         }
@@ -75,6 +79,7 @@ function Login() {
               text: "Your account is still pending admin approval. ⏳", 
               type: "error" 
             });
+            setIsLoading(false);
             return;
           }
 
@@ -84,6 +89,7 @@ function Login() {
 
           setTimeout(() => {
             setStatusMessage({ text: "", type: "" });
+            setIsLoading(false);
             if (userRole === "admin") navigate("/admin-control");
             else if (userRole === "student") navigate("/student-dashboard");
             else if (userRole === "mentor") navigate("/mentor-dashboard");
@@ -92,10 +98,12 @@ function Login() {
         }
       } else {
         setStatusMessage({ text: data.message || "Invalid credentials. ❌", type: "error" });
+        setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
       setStatusMessage({ text: "Server connection error — is the backend database running? 🖥️", type: "error" });
+      setIsLoading(false);
     }
   };
 
@@ -165,7 +173,21 @@ function Login() {
             />
 
             {/* 🛠️ CHANGED TO type="submit" */}
-            <button type="submit" className="login-btn">{isRegister ? "Sign Up" : "Login"}</button>
+            <button 
+              type="submit" 
+              className="login-btn"
+              disabled={isLoading}
+              style={{ opacity: isLoading ? 0.6 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}
+            >
+              {isLoading ? (
+                <>
+                  <span style={{ display: "inline-block", marginRight: "8px" }}>⏳</span>
+                  {isRegister ? "Signing Up..." : "Logging In..."}
+                </>
+              ) : (
+                isRegister ? "Sign Up" : "Login"
+              )}
+            </button>
 
             <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} 
                style={{ cursor: "pointer", marginTop: "15px" }}>
