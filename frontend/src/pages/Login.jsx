@@ -57,13 +57,13 @@ function Login() {
 
       if (data.success) {
         setStatusMessage({ text: `${data.message} 🚀`, type: "success" });
+        setIsLoading(false);
 
         if (isRegister && (form.role === "mentor" || form.role === "Mentor")) {
           setTimeout(() => {
             setForm({ name: "", email: "", password: "", role: "student" });
             setIsRegister(false); 
             setStatusMessage({ text: "", type: "" });
-            setIsLoading(false);
           }, 2500);
           return;
         }
@@ -89,7 +89,6 @@ function Login() {
 
           setTimeout(() => {
             setStatusMessage({ text: "", type: "" });
-            setIsLoading(false);
             if (userRole === "admin") navigate("/admin-control");
             else if (userRole === "student") navigate("/student-dashboard");
             else if (userRole === "mentor") navigate("/mentor-dashboard");
