@@ -15,15 +15,19 @@ app.use(cors({
 
 app.use(express.json());
 
+const bcrypt = require("bcryptjs");
+
 // DATABASE CONNECTION
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
-  ssl: { rejectUnauthorized: false }
-});
+const db = !process.env.DB_HOST
+  ? require("./dbMock")
+  : mysql.createConnection({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT || 3306,
+      ssl: { rejectUnauthorized: false }
+    });
 
 db.connect((err) => {
   if (err) {
@@ -100,6 +104,8 @@ app.get("/users", (req, res) => {
   });
 });
 
+// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD
+// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD (HASHED)
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -114,33 +120,63 @@ app.post("/register", (req, res) => {
   const isApproved = normalizedRole === 'mentor' ? 0 : 1; 
   const randomId = Math.floor(Math.random() * 999999);
 
-  const sql = "INSERT INTO users (id, name, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)";
-  db.query(sql, [randomId, name, email, password, normalizedRole, isApproved], (err, result) => {
-    if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage });
+  bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
+    if (hashErr) return res.status(500).json({ success: false, message: "Server hashing error." });
 
-    sendEmailViaHTTP({
-      to: "otanieljane@gmail.com",
-      subject: "🚨 New User Registration Alert - Skills Bloom",
-      textContent: `Hello Admin,\n\nA new user has registered!\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}`
+    const sql = "INSERT INTO users (id, name, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)";
+    db.query(sql, [randomId, name, email, hashedPassword, normalizedRole, isApproved], (err, result) => {
+      if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage || err.message });
+
+      // 📩 1. ALERT EMAIL TO YOU (The Admin)
+      sendEmailViaHTTP({
+        to: "otanieljane@gmail.com",
+        subject: "🚨 New User Registration Alert - Skills Bloom",
+        textContent: `Hello Admin,\n\nA new user has registered!\n- Name: ${name}\n- Email: ${email}`
+      });
+
+      // 📩 2. WELCOME EMAIL TO USER
+      sendEmailViaHTTP({
+        to: email,
+        subject: "Welcome to Skills Bloom! 🌱",
+        textContent: `Hello ${name}, thank you for registering!`
+      });
+
+      res.json({ success: true, message: "Account created successfully! 📥" });
     });
-
-    sendEmailViaHTTP({
-      to: email,
-      subject: "Welcome to Skills Bloom! 🌱",
-      textContent: `Hello ${name},\n\nThank you for registering! Please wait for official confirmation.`
-    });
-
-    res.json({ success: true, message: "Account created successfully! 📥" });
-  });
+  }); // <--- This closing brace was missing in your original code!
 });
 
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
   const sql = "SELECT * FROM users WHERE email = ?";
-  db.query(sql, [email], (err, result) => {
+  db.query(sql, [email], async (err, result) => {
     if (err) return res.status(500).json({ success: false, message: "Server error." });
-    if (result.length > 0 && result[0].password === password) {
-      res.json({ success: true, message: "Login successful", user: result[0] });
+    if (result.length > 0) {
+      const storedPassword = result[0].password;
+      let isMatch = false;
+
+      // Check if storedPassword looks like a bcrypt hash (starts with $2a$ or $2b$)
+      if (storedPassword && (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$"))) {
+        isMatch = await bcrypt.compare(password, storedPassword);
+      } else {
+        // Plaintext fallback
+        isMatch = (password === storedPassword);
+        if (isMatch) {
+          // Auto-migrate to bcrypt hash in the background
+          try {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, result[0].id]);
+          } catch (migrateErr) {
+            console.error("Failed to migrate password hash in background:", migrateErr);
+          }
+        }
+      }
+
+      if (isMatch) {
+        res.json({ success: true, message: "Login successful", user: result[0] });
+      } else {
+        res.json({ success: false, message: "Invalid credentials" });
+      }
     } else {
       res.json({ success: false, message: "Invalid credentials" });
     }

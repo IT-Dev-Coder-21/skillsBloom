@@ -7,6 +7,7 @@ function Login() {
   const [isRegister, setIsRegister] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -37,6 +38,8 @@ function Login() {
       return;
     }
 
+    setIsLoading(true);
+
     const url = isRegister
       ? `${API_BASE_URL}/register`
       : `${API_BASE_URL}/login`;
@@ -54,6 +57,7 @@ function Login() {
 
       if (data.success) {
         setStatusMessage({ text: `${data.message} 🚀`, type: "success" });
+        setIsLoading(false);
 
         if (isRegister && (form.role === "mentor" || form.role === "Mentor")) {
           setTimeout(() => {
@@ -75,6 +79,7 @@ function Login() {
               text: "Your account is still pending admin approval. ⏳", 
               type: "error" 
             });
+            setIsLoading(false);
             return;
           }
 
@@ -92,10 +97,12 @@ function Login() {
         }
       } else {
         setStatusMessage({ text: data.message || "Invalid credentials. ❌", type: "error" });
+        setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
       setStatusMessage({ text: "Server connection error — is the backend database running? 🖥️", type: "error" });
+      setIsLoading(false);
     }
   };
 
@@ -165,7 +172,21 @@ function Login() {
             />
 
             {/* 🛠️ CHANGED TO type="submit" */}
-            <button type="submit" className="login-btn">{isRegister ? "Sign Up" : "Login"}</button>
+            <button 
+              type="submit" 
+              className="login-btn"
+              disabled={isLoading}
+              style={{ opacity: isLoading ? 0.6 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}
+            >
+              {isLoading ? (
+                <>
+                  <span style={{ display: "inline-block", marginRight: "8px" }}>⏳</span>
+                  {isRegister ? "Signing Up..." : "Logging In..."}
+                </>
+              ) : (
+                isRegister ? "Sign Up" : "Login"
+              )}
+            </button>
 
             <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} 
                style={{ cursor: "pointer", marginTop: "15px" }}>

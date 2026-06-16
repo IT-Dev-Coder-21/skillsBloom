@@ -7,6 +7,12 @@ export default function BookSession() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
+  // MENTOR DETAILS & AVAILABILITY STATE
+  const [mentorDetails, setMentorDetails] = useState(null);
+  const [availability, setAvailability] = useState([]);
+  const [matchingSlots, setMatchingSlots] = useState([]);
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
+
   // ✅ STATUS BANNER STATE: Clean on-screen user alerts
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
 
@@ -23,7 +29,39 @@ export default function BookSession() {
       return;
     }
     setUser(u);
-  }, [navigate]);
+
+    // Fetch mentor details by name
+    fetch(`${API_BASE_URL}/mentors`)
+      .then((res) => res.json())
+      .then((data) => {
+        const matched = data.find(m => m.name.toLowerCase() === mentorName.toLowerCase());
+        if (matched) {
+          setMentorDetails(matched);
+          // Fetch availability for this mentor
+          fetch(`${API_BASE_URL}/mentors/${matched.id}/availability`)
+            .then((res) => res.json())
+            .then((availData) => setAvailability(availData))
+            .catch((err) => console.error("Error fetching availability:", err));
+        }
+      })
+      .catch((err) => console.error("Error fetching mentors:", err));
+  }, [mentorName, navigate]);
+
+  // Determine availability slots whenever chosen date changes
+  useEffect(() => {
+    if (!form.date) {
+      setMatchingSlots([]);
+      setSelectedDayOfWeek("");
+      return;
+    }
+    const date = new Date(form.date);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = days[date.getDay()];
+    setSelectedDayOfWeek(dayName);
+
+    const slots = availability.filter(a => a.day_of_week.toLowerCase() === dayName.toLowerCase());
+    setMatchingSlots(slots);
+  }, [form.date, availability]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -37,6 +75,45 @@ export default function BookSession() {
       return;
     }
 
+    // --- TIME VALIDATION ---
+    const date = new Date(form.date);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = days[date.getDay()];
+
+    const slots = availability.filter(a => a.day_of_week.toLowerCase() === dayName.toLowerCase());
+    
+    if (availability.length > 0) {
+      // Mentor has specified slots, we must match one of them
+      if (slots.length === 0) {
+        setStatusMessage({ text: `The mentor is not available on ${dayName}s! ⚠️`, type: "error" });
+        return;
+      }
+      
+      const cleanTime = form.time.substring(0, 5);
+      const isWithinAnySlot = slots.some(s => {
+        const cleanStart = s.start_time.substring(0, 5);
+        const cleanEnd = s.end_time.substring(0, 5);
+        return cleanTime >= cleanStart && cleanTime <= cleanEnd;
+      });
+
+      if (!isWithinAnySlot) {
+        const slotRanges = slots.map(s => `${s.start_time.substring(0,5)} - ${s.end_time.substring(0,5)}`).join(", ");
+        setStatusMessage({ text: `Selected time is outside the mentor's available slots on ${dayName}s (${slotRanges})! ⚠️`, type: "error" });
+        return;
+      }
+    } else {
+      // Fallback: Default to Mon-Fri 09:00 - 17:00
+      if (dayName === "Saturday" || dayName === "Sunday") {
+        setStatusMessage({ text: "Default weekend hours: Mentor is not available on weekends! ⚠️", type: "error" });
+        return;
+      }
+      const cleanTime = form.time.substring(0, 5);
+      if (cleanTime < "09:00" || cleanTime > "17:00") {
+        setStatusMessage({ text: "Default hours: Selected time must be between 09:00 AM and 05:00 PM! ⚠️", type: "error" });
+        return;
+      }
+    }
+
     const newBooking = {
       mentorName: mentorName,
       studentName: user.name,
@@ -47,7 +124,6 @@ export default function BookSession() {
     };
 
     try {
-      // ✅ UPDATED ENDPOINT: Swapped hardcoded localhost with dynamic configuration path
       const res = await fetch(`${API_BASE_URL}/bookings`, {
         method: "POST",
         headers: {
@@ -56,7 +132,6 @@ export default function BookSession() {
         body: JSON.stringify(newBooking)
       });
 
-      // Catch backend errors (like a 500 server crash) gracefully before parsing JSON
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         setStatusMessage({ 
@@ -70,8 +145,6 @@ export default function BookSession() {
 
       if (data.success) {
         setStatusMessage({ text: "Session booked successfully! Redirecting... 🎉", type: "success" });
-        
-        // Brief view delay before sending back to tracking panel
         setTimeout(() => {
           navigate("/student-dashboard");
         }, 2000);
@@ -87,11 +160,20 @@ export default function BookSession() {
   if (!user) return <div className="loading" style={{ padding: "40px", textAlign: "center" }}><h2>Loading Context Parameters...</h2></div>;
 
   return (
-    <div className="booking-page-container" style={{ padding: "40px 20px", maxWidth: "500px", margin: "0 auto" }}>
-      <div className="auth-container" style={{ padding: "30px", background: "#fff", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+    <div className="booking-page-container" style={{ padding: "40px 20px", maxWidth: "600px", margin: "0 auto" }}>
+      <div className="auth-container" style={{ padding: "30px", background: "#fff", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "left" }}>
         
         <h2 style={{ marginBottom: "10px", color: "#333" }}>📅 Book a Session</h2>
         <p style={{ color: "#666", marginBottom: "20px" }}>Scheduling a sync with <strong>{mentorName}</strong></p>
+
+        {/* MENTOR DETAILS (IF MATCHED IN DB) */}
+        {mentorDetails && (
+          <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "6px", marginBottom: "20px", borderLeft: "4px solid #4CAF50" }}>
+            <h4 style={{ margin: 0, color: "#333" }}>{mentorDetails.name}</h4>
+            <span style={{ fontSize: "13px", fontWeight: "bold", color: "#4CAF50" }}>{mentorDetails.role}</span>
+            <p style={{ margin: "8px 0 0 0", fontSize: "13px", color: "#555" }}>{mentorDetails.bio}</p>
+          </div>
+        )}
 
         {/* ✅ DYNAMIC STATUS BANNER */}
         {statusMessage.text && (
@@ -122,6 +204,33 @@ export default function BookSession() {
               style={{ width: "100%", padding: "10px", borderRadius: "4px", border: "1px solid #ccc" }}
             />
           </div>
+
+          {/* DYNAMIC AVAILABILITY NOTICE */}
+          {form.date && (
+            <div style={{ background: "#eef2f7", padding: "12px", borderRadius: "6px", fontSize: "13px", color: "#333" }}>
+              <strong>🗓️ Selected day: {selectedDayOfWeek}</strong>
+              <div style={{ marginTop: "5px" }}>
+                {matchingSlots.length > 0 ? (
+                  <div>
+                    <span style={{ color: "#2e7d32", fontWeight: "bold" }}>Available Slots:</span>
+                    <ul style={{ margin: "5px 0 0 20px", padding: 0 }}>
+                      {matchingSlots.map(s => (
+                        <li key={s.id}>⏰ {s.start_time.substring(0,5)} - {s.end_time.substring(0,5)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div>
+                    {availability.length > 0 ? (
+                      <span style={{ color: "#c62828", fontWeight: "bold" }}>The mentor has no available slots scheduled on this day.</span>
+                    ) : (
+                      <span style={{ color: "#777" }}>Defaulting to general hours (Mon-Fri 09:00 AM - 05:00 PM).</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div>
             <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", fontSize: "14px" }}>Select Time</label>
