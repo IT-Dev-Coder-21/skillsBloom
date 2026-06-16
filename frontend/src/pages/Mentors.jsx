@@ -9,7 +9,7 @@ export default function Mentors() {
 
   // FETCH DATA FROM DATABASE
   useEffect(() => {
-    fetch(`${API_BASE_URL}/mentors`)
+    fetch(`${API_BASE_URL}/api/approved-mentors`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch mentors");
         return res.json();
