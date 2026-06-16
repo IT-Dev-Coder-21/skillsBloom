@@ -4,11 +4,9 @@ console.log("SERVER FILE IS RUNNING IN PRODUCTION MODE");
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-// Nodemailer removed to prevent connection errors
 
 const app = express();
 
-// Single, clean CORS configuration
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -32,10 +30,21 @@ db.connect((err) => {
     console.log("MySQL Connection Error ❌:", err);
   } else {
     console.log("MySQL Connected Successfully ✅");
+
+    db.query(`CREATE TABLE IF NOT EXISTS mentor_availability (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      mentor_email VARCHAR(255),
+      available_date VARCHAR(50),
+      available_time VARCHAR(50),
+      is_booked BOOLEAN DEFAULT FALSE
+    )`, (err) => {
+      if (err) console.error("Table creation error:", err);
+      else console.log("Mentor Availability table is ready! ✅");
+    });
   }
 });
 
-// 🚀 CLOUD-FRIENDLY HTTP EMAIL FUNCTION (Replaces Nodemailer SMTP)
+// 🚀 CLOUD-FRIENDLY HTTP EMAIL FUNCTION
 async function sendEmailViaHTTP({ to, subject, textContent }) {
   try {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -64,10 +73,18 @@ async function sendEmailViaHTTP({ to, subject, textContent }) {
   }
 }
 
+// --- NEW ROUTE FOR MENTORS PAGE ---
+app.get("/api/approved-mentors", (req, res) => {
+  const sql = "SELECT id, name, email, role FROM users WHERE role = 'mentor' AND is_approved = 1";
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
 // ROUTES
 app.get("/test", (req, res) => res.send("Test works"));
 
-// Root route to welcome visitors and prevent "Cannot GET /"
 app.get("/", (req, res) => {
   res.json({
     message: "Welcome to the Skills Bloom API Server! 🌸",
@@ -83,11 +100,9 @@ app.get("/users", (req, res) => {
   });
 });
 
-// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD
 app.post("/register", (req, res) => {
   const { name, email, password, role } = req.body;
 
-  // 🔒 BACKEND PASSWORD VALIDATION SHIELD
   if (!password || password.length < 8) {
     return res.status(400).json({ 
       success: false, 
@@ -103,25 +118,19 @@ app.post("/register", (req, res) => {
   db.query(sql, [randomId, name, email, password, normalizedRole, isApproved], (err, result) => {
     if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage });
 
-    // 📩 1. ALERT EMAIL TO YOU (The Admin)
     sendEmailViaHTTP({
       to: "otanieljane@gmail.com",
       subject: "🚨 New User Registration Alert - Skills Bloom",
-      textContent: `Hello Admin,\n\nA new user has registered on Skills Bloom!\n\nDetails:\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}\n- Account Status: ${isApproved === 1 ? 'Automatically Approved' : 'Pending Admin Approval'}\n\n Thank You!,`
+      textContent: `Hello Admin,\n\nA new user has registered!\n- Name: ${name}\n- Email: ${email}\n- Role: ${normalizedRole}`
     });
 
-    // 📩 2. WELCOME/WAIT EMAIL TO THE REGISTERED USER
     sendEmailViaHTTP({
       to: email,
-      subject: "Welcome to Skills Bloom! 🌱 Account Received",
-      textContent: `Hello ${name},\n\nThank you for registering an account with Skills Bloom as a ${normalizedRole}!\n\nYour details have been successfully received. Please wait for your official confirmation email from our team before attempting to log in.\n\nWe look forward to blooming with you!\n\nBest regards,\nSkills Bloom Team 🌸`
+      subject: "Welcome to Skills Bloom! 🌱",
+      textContent: `Hello ${name},\n\nThank you for registering! Please wait for official confirmation.`
     });
 
-    // Send successful response with your custom message back to React
-    res.json({ 
-      success: true, 
-      message: "Account created successfully! Please check your inbox and wait for your confirmation email. 📥" 
-    });
+    res.json({ success: true, message: "Account created successfully! 📥" });
   });
 });
 
@@ -138,7 +147,6 @@ app.post("/login", (req, res) => {
   });
 });
 
-// --- ADMIN ROUTES ---
 app.get("/admin/pending-mentors", (req, res) => {
   db.query("SELECT id, name, email FROM users WHERE role = 'mentor' AND is_approved = 0", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -154,7 +162,6 @@ app.post("/admin/approve-mentor", (req, res) => {
   });
 });
 
-// BOOKING ROUTES
 app.get("/bookings", (req, res) => {
   db.query("SELECT * FROM bookings ORDER BY id DESC", (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -164,41 +171,48 @@ app.get("/bookings", (req, res) => {
 
 app.post("/bookings", (req, res) => {
   const { studentName, studentEmail, mentorName, date, time, objective } = req.body;
-  
   const findMentorSql = "SELECT email FROM users WHERE name = ? AND role = 'mentor' LIMIT 1";
   
   db.query(findMentorSql, [mentorName], (mentorErr, mentorResult) => {
-    let mentorEmail = null;
-    if (!mentorErr && mentorResult.length > 0) {
-      mentorEmail = mentorResult[0].email;
-    }
-
-    // Generate a numeric ID using the current time milliseconds
+    let mentorEmail = mentorResult?.length > 0 ? mentorResult[0].email : null;
     const forcedBookingId = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 1000);
 
     const sql = "INSERT INTO bookings (id, studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    
     db.query(sql, [forcedBookingId, studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
       if (err) return res.status(500).json({ success: false, errorDetails: err.message });
 
-      // 📩 3. STUDENT BOOKING CONFIRMATION
       sendEmailViaHTTP({
         to: studentEmail, 
         subject: "Your Mentorship Session is Confirmed! 🎉",
-        textContent: `Hello ${studentName},\n\nYour session with ${mentorName} is confirmed for ${date} at ${time}.\nObjective: ${objective}\n\nBest regards,\nSkills Bloom Team`
+        textContent: `Hello ${studentName}, your session with ${mentorName} is confirmed.`
       });
 
-      // 📩 4. MENTOR BOOKING ALERT
       if (mentorEmail) {
         sendEmailViaHTTP({
           to: mentorEmail,
           subject: "New Mentorship Booking Notification! 📅",
-          textContent: `Hello ${mentorName},\n\nA student has booked a session with you!\n\nDetails:\n- Student Name: ${studentName}\n- Date: ${date}\n- Time: ${time}\n- Objective: ${objective}\n\nPlease prepare accordingly.\n\nBest regards,\nSkills Bloom Team`
+          textContent: `New booking from ${studentName}.`
         });
       }
-
       res.status(200).json({ success: true, id: forcedBookingId });
     });
+  });
+});
+
+app.post("/mentor/add-slot", (req, res) => {
+  const { email, date, time } = req.body;
+  const sql = "INSERT INTO mentor_availability (mentor_email, available_date, available_time) VALUES (?, ?, ?)";
+  db.query(sql, [email, date, time], (err) => {
+    if (err) return res.status(500).json({ success: false, error: err.message });
+    res.json({ success: true, message: "Slot added successfully!" });
+  });
+});
+
+app.get("/mentor/slots/:email", (req, res) => {
+  const sql = "SELECT * FROM mentor_availability WHERE mentor_email = ? AND is_booked = FALSE";
+  db.query(sql, [req.params.email], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
   });
 });
 
