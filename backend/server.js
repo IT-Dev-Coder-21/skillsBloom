@@ -77,9 +77,10 @@ async function sendEmailViaHTTP({ to, subject, textContent }) {
   }
 }
 
-// --- NEW ROUTE FOR MENTORS PAGE ---
+// --- ROUTE FOR MENTORS PAGE ---
 app.get("/api/approved-mentors", (req, res) => {
-  const sql = "SELECT id, name, email, role FROM users WHERE role = 'mentor' AND is_approved = 1";
+  // Ensure image_url is selected here
+  const sql = "SELECT id, name, email, role, image_url FROM users WHERE role = 'mentor' AND is_approved = 1";
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
@@ -104,10 +105,9 @@ app.get("/users", (req, res) => {
   });
 });
 
-// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD
-// REGISTRATION WITH EMAIL NOTIFICATIONS & PASSWORD SHIELD (HASHED)
+// REGISTRATION
 app.post("/register", (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, image_url } = req.body;
 
   if (!password || password.length < 8) {
     return res.status(400).json({ 
@@ -123,18 +123,16 @@ app.post("/register", (req, res) => {
   bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
     if (hashErr) return res.status(500).json({ success: false, message: "Server hashing error." });
 
-    const sql = "INSERT INTO users (id, name, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)";
-    db.query(sql, [randomId, name, email, hashedPassword, normalizedRole, isApproved], (err, result) => {
+    const sql = "INSERT INTO users (id, name, email, password, role, is_approved, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    db.query(sql, [randomId, name, email, hashedPassword, normalizedRole, isApproved, image_url || null], (err, result) => {
       if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage || err.message });
 
-      // 📩 1. ALERT EMAIL TO YOU (The Admin)
       sendEmailViaHTTP({
         to: "otanieljane@gmail.com",
         subject: "🚨 New User Registration Alert - Skills Bloom",
         textContent: `Hello Admin,\n\nA new user has registered!\n- Name: ${name}\n- Email: ${email}`
       });
 
-      // 📩 2. WELCOME EMAIL TO USER
       sendEmailViaHTTP({
         to: email,
         subject: "Welcome to Skills Bloom! 🌱",
@@ -143,7 +141,7 @@ app.post("/register", (req, res) => {
 
       res.json({ success: true, message: "Account created successfully! 📥" });
     });
-  }); // <--- This closing brace was missing in your original code!
+  });
 });
 
 app.post("/login", (req, res) => {
@@ -155,14 +153,11 @@ app.post("/login", (req, res) => {
       const storedPassword = result[0].password;
       let isMatch = false;
 
-      // Check if storedPassword looks like a bcrypt hash (starts with $2a$ or $2b$)
       if (storedPassword && (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$"))) {
         isMatch = await bcrypt.compare(password, storedPassword);
       } else {
-        // Plaintext fallback
         isMatch = (password === storedPassword);
         if (isMatch) {
-          // Auto-migrate to bcrypt hash in the background
           try {
             const hashedPassword = await bcrypt.hash(password, 10);
             db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, result[0].id]);

@@ -1,4 +1,4 @@
-import API_BASE_URL from "./config";
+import API_BASE_URL from "./config"; 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../index.css";
@@ -13,7 +13,8 @@ function Login() {
     name: "",
     email: "",
     password: "",
-    role: "student"
+    role: "student",
+    image_url: "" // NEW: Added field
   });
 
   const navigate = useNavigate();
@@ -22,17 +23,14 @@ function Login() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // 🛠️ Updated to handle the event object 'e' from form submission
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault(); // Prevents the browser from reloading the page
+    if (e) e.preventDefault();
 
-    // 1. Basic required fields check
     if (!form.email || !form.password || (isRegister && !form.name)) {
       setStatusMessage({ text: "Please fill in all required fields! ⚠️", type: "error" });
       return;
     }
 
-    // 2. 🔒 8-Character Password Validation
     if (isRegister && form.password.length < 8) {
       setStatusMessage({ text: "Password must be at least 8 characters long! 🔑", type: "error" });
       return;
@@ -47,9 +45,7 @@ function Login() {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
       });
 
@@ -61,7 +57,7 @@ function Login() {
 
         if (isRegister && (form.role === "mentor" || form.role === "Mentor")) {
           setTimeout(() => {
-            setForm({ name: "", email: "", password: "", role: "student" });
+            setForm({ name: "", email: "", password: "", role: "student", image_url: "" });
             setIsRegister(false); 
             setStatusMessage({ text: "", type: "" });
           }, 2500);
@@ -75,17 +71,13 @@ function Login() {
           const isApproved = loggedInUser.is_approved;
 
           if (userRole === "mentor" && isApproved === 0) {
-            setStatusMessage({ 
-              text: "Your account is still pending admin approval. ⏳", 
-              type: "error" 
-            });
+            setStatusMessage({ text: "Your account is still pending admin approval. ⏳", type: "error" });
             setIsLoading(false);
             return;
           }
 
           localStorage.setItem("user", JSON.stringify(loggedInUser));
-
-          setForm({ name: "", email: "", password: "", role: "student" });
+          setForm({ name: "", email: "", password: "", role: "student", image_url: "" });
 
           setTimeout(() => {
             setStatusMessage({ text: "", type: "" });
@@ -113,11 +105,7 @@ function Login() {
           <Link to="/" style={{ textDecoration: 'none', color: 'white' }}>
             <h1>🌱 Skills Bloom</h1>
           </Link>
-
-          <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
-            ☰
-          </div>
-
+          <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>☰</div>
           <ul className={`nav-links ${menuOpen ? "active" : ""}`}>
             <li><Link to="/">Home</Link></li>
             <li><Link to="/about">About</Link></li>
@@ -125,27 +113,16 @@ function Login() {
             <li><Link to="/mentors">Meet Our Mentors</Link></li>
             <li><Link to="/login">Login</Link></li>
           </ul>
-
-          <div className="codeblossom-logo">
-            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA?w=150&h=150&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3" alt="Skills Bloom Logo" />
-          </div>
         </nav>
       </header>
 
       <section className="login-hero">
         <div className="login-content">
-          {/* 🛠️ CHANGED FROM <div> TO An ACTUAL <form> */}
           <form onSubmit={handleSubmit} className="auth-container">
             <h1>{isRegister ? "Create Account" : "Welcome"}</h1>
             
             {statusMessage.text && (
-              <div style={{
-                padding: "12px", borderRadius: "6px", marginBottom: "15px",
-                backgroundColor: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee",
-                color: statusMessage.type === "success" ? "#2e7d32" : "#c62828",
-                border: statusMessage.type === "success" ? "1px solid #a5d6a7" : "1px solid #ef9a9a",
-                textAlign: "center"
-              }}>
+              <div style={{ padding: "12px", borderRadius: "6px", marginBottom: "15px", backgroundColor: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee", color: statusMessage.type === "success" ? "#2e7d32" : "#c62828", border: statusMessage.type === "success" ? "1px solid #a5d6a7" : "1px solid #ef9a9a", textAlign: "center" }}>
                 {statusMessage.text}
               </div>
             )}
@@ -157,7 +134,13 @@ function Login() {
             </select>
 
             {isRegister && (
-              <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} required />
+              <>
+                <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} required />
+                {/* NEW: Only show image_url if role is mentor */}
+                {form.role === "mentor" && (
+                  <input name="image_url" placeholder="Profile Picture URL" value={form.image_url} onChange={handleChange} />
+                )}
+              </>
             )}
 
             <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
@@ -171,25 +154,11 @@ function Login() {
               required
             />
 
-            {/* 🛠️ CHANGED TO type="submit" */}
-            <button 
-              type="submit" 
-              className="login-btn"
-              disabled={isLoading}
-              style={{ opacity: isLoading ? 0.6 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}
-            >
-              {isLoading ? (
-                <>
-                  <span style={{ display: "inline-block", marginRight: "8px" }}>⏳</span>
-                  {isRegister ? "Signing Up..." : "Logging In..."}
-                </>
-              ) : (
-                isRegister ? "Sign Up" : "Login"
-              )}
+            <button type="submit" className="login-btn" disabled={isLoading} style={{ opacity: isLoading ? 0.6 : 1 }}>
+              {isLoading ? (isRegister ? "Signing Up..." : "Logging In...") : (isRegister ? "Sign Up" : "Login")}
             </button>
 
-            <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} 
-               style={{ cursor: "pointer", marginTop: "15px" }}>
+            <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} style={{ cursor: "pointer", marginTop: "15px" }}>
               {isRegister ? "Already have an account? Login" : "Don't have an account? Sign up"}
             </p>
           </form>
