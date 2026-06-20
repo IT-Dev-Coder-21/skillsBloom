@@ -4,6 +4,7 @@ console.log("SERVER FILE IS RUNNING IN PRODUCTION MODE");
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
 
 const app = express();
 
@@ -15,9 +16,7 @@ app.use(cors({
 
 app.use(express.json());
 
-const bcrypt = require("bcryptjs");
-
-// DATABASE CONNECTION - Fixed to support Railway/Render variables
+// DATABASE CONNECTION
 const db = !process.env.DB_HOST
   ? require("./dbMock")
   : mysql.createConnection({
@@ -34,7 +33,6 @@ db.connect((err) => {
     console.log("MySQL Connection Error ❌:", err);
   } else {
     console.log("MySQL Connected Successfully ✅");
-
     db.query(`CREATE TABLE IF NOT EXISTS mentor_availability (
       id INT AUTO_INCREMENT PRIMARY KEY,
       mentor_email VARCHAR(255),
@@ -65,21 +63,13 @@ async function sendEmailViaHTTP({ to, subject, textContent }) {
         textContent: textContent
       })
     });
-
     const data = await response.json();
-    if (!response.ok) {
-      console.log("Brevo API Delivery Issue ❌:", data);
-    } else {
-      console.log(`Email successfully routed to ${to} via HTTP API ✅`);
-    }
-  } catch (error) {
-    console.error("Failed to make email API request ❌:", error);
-  }
+    if (!response.ok) console.log("Brevo API Delivery Issue ❌:", data);
+  } catch (error) { console.error("Failed to make email API request ❌:", error); }
 }
 
-// --- ROUTE FOR MENTORS PAGE ---
+// --- ALL ORIGINAL ROUTES ---
 app.get("/api/mentors", (req, res) => {
-  // FIXED: Select 'image' (database column) instead of 'image_url'
   const sql = "SELECT id, name, email, role, image, bio, title, skills FROM users WHERE role = 'mentor'";
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -87,15 +77,10 @@ app.get("/api/mentors", (req, res) => {
   });
 });
 
-// ROUTES
 app.get("/test", (req, res) => res.send("Test works"));
 
 app.get("/", (req, res) => {
-  res.json({
-    message: "Welcome to the Skills Bloom API Server! 🌸",
-    status: "Active & Connected to Render Database",
-    version: "1.0.0"
-  });
+  res.json({ message: "Welcome to the Skills Bloom API Server! 🌸", status: "Active" });
 });
 
 app.get("/users", (req, res) => {
@@ -105,41 +90,16 @@ app.get("/users", (req, res) => {
   });
 });
 
-// REGISTRATION
+// REGISTRATION & LOGIN
 app.post("/register", (req, res) => {
-  const { name, email, password, role, image } = req.body; // FIXED: Use 'image'
-
-  if (!password || password.length < 8) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Registration rejected: Password must be at least 8 characters long! 🔑" 
-    });
-  }
-
+  const { name, email, password, role, image } = req.body;
+  if (!password || password.length < 8) return res.status(400).json({ success: false, message: "Password too short." });
   const normalizedRole = role ? role.toLowerCase() : "student";
   const isApproved = normalizedRole === 'mentor' ? 0 : 1; 
-  const randomId = Math.floor(Math.random() * 999999);
-
   bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
-    if (hashErr) return res.status(500).json({ success: false, message: "Server hashing error." });
-
-    // FIXED: Query now uses column 'image'
-    const sql = "INSERT INTO users (id, name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    db.query(sql, [randomId, name, email, hashedPassword, normalizedRole, isApproved, image || null], (err, result) => {
-      if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage || err.message });
-
-      sendEmailViaHTTP({
-        to: "otanieljane@gmail.com",
-        subject: "🚨 New User Registration Alert - Skills Bloom",
-        textContent: `Hello Admin,\n\nA new user has registered!\n- Name: ${name}\n- Email: ${email}`
-      });
-
-      sendEmailViaHTTP({
-        to: email,
-        subject: "Welcome to Skills Bloom! 🌱",
-        textContent: `Hello ${name}, thank you for registering!`
-      });
-
+    const sql = "INSERT INTO users (name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?)";
+    db.query(sql, [name, email, hashedPassword, normalizedRole, isApproved, image || null], (err) => {
+      if (err) return res.status(500).json({ success: false, errorDetails: err.message });
       res.json({ success: true, message: "Account created successfully! 📥" });
     });
   });
@@ -147,38 +107,16 @@ app.post("/register", (req, res) => {
 
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
-  const sql = "SELECT * FROM users WHERE email = ?";
-  db.query(sql, [email], async (err, result) => {
-    if (err) return res.status(500).json({ success: false, message: "Server error." });
-    if (result.length > 0) {
-      const storedPassword = result[0].password;
-      let isMatch = false;
-
-      if (storedPassword && (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$"))) {
-        isMatch = await bcrypt.compare(password, storedPassword);
-      } else {
-        isMatch = (password === storedPassword);
-        if (isMatch) {
-          try {
-            const hashedPassword = await bcrypt.hash(password, 10);
-            db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, result[0].id]);
-          } catch (migrateErr) {
-            console.error("Failed to migrate password hash in background:", migrateErr);
-          }
-        }
-      }
-
-      if (isMatch) {
-        res.json({ success: true, message: "Login successful", user: result[0] });
-      } else {
-        res.json({ success: false, message: "Invalid credentials" });
-      }
+  db.query("SELECT * FROM users WHERE email = ?", [email], async (err, result) => {
+    if (result.length > 0 && await bcrypt.compare(password, result[0].password)) {
+      res.json({ success: true, user: result[0] });
     } else {
       res.json({ success: false, message: "Invalid credentials" });
     }
   });
 });
 
+// ADMIN & BOOKING ROUTES
 app.get("/admin/pending-mentors", (req, res) => {
   db.query("SELECT id, name, email FROM users WHERE role = 'mentor' AND is_approved = 0", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -188,9 +126,9 @@ app.get("/admin/pending-mentors", (req, res) => {
 
 app.post("/admin/approve-mentor", (req, res) => {
   const { mentorId } = req.body;
-  db.query("UPDATE users SET is_approved = 1 WHERE id = ?", [mentorId], (err, result) => {
+  db.query("UPDATE users SET is_approved = 1 WHERE id = ?", [mentorId], (err) => {
     if (err) return res.status(500).json({ success: false, message: err.message });
-    res.json({ success: true, message: "Mentor authorized successfully!" });
+    res.json({ success: true });
   });
 });
 
@@ -203,40 +141,20 @@ app.get("/bookings", (req, res) => {
 
 app.post("/bookings", (req, res) => {
   const { studentName, studentEmail, mentorName, date, time, objective } = req.body;
-  const findMentorSql = "SELECT email FROM users WHERE name = ? AND role = 'mentor' LIMIT 1";
-  
-  db.query(findMentorSql, [mentorName], (mentorErr, mentorResult) => {
-    let mentorEmail = mentorResult?.length > 0 ? mentorResult[0].email : null;
-    const forcedBookingId = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 1000);
-
-    const sql = "INSERT INTO bookings (id, studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    db.query(sql, [forcedBookingId, studentName, studentEmail, mentorName, date, time || "N/A", objective || "Mentorship Session"], (err, result) => {
-      if (err) return res.status(500).json({ success: false, errorDetails: err.message });
-
-      sendEmailViaHTTP({
-        to: studentEmail, 
-        subject: "Your Mentorship Session is Confirmed! 🎉",
-        textContent: `Hello ${studentName}, your session with ${mentorName} is confirmed.`
-      });
-
-      if (mentorEmail) {
-        sendEmailViaHTTP({
-          to: mentorEmail,
-          subject: "New Mentorship Booking Notification! 📅",
-          textContent: `New booking from ${studentName}.`
-        });
-      }
-      res.status(200).json({ success: true, id: forcedBookingId });
-    });
+  const sql = "INSERT INTO bookings (studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?)";
+  db.query(sql, [studentName, studentEmail, mentorName, date, time, objective], (err) => {
+    if (err) return res.status(500).json({ success: false });
+    res.json({ success: true });
   });
 });
 
+// AVAILABILITY ROUTES
 app.post("/mentor/add-slot", (req, res) => {
   const { email, date, time } = req.body;
   const sql = "INSERT INTO mentor_availability (mentor_email, available_date, available_time) VALUES (?, ?, ?)";
   db.query(sql, [email, date, time], (err) => {
     if (err) return res.status(500).json({ success: false, error: err.message });
-    res.json({ success: true, message: "Slot added successfully!" });
+    res.json({ success: true });
   });
 });
 
@@ -248,10 +166,16 @@ app.get("/mentor/slots/:email", (req, res) => {
   });
 });
 
+app.delete("/mentor/slots/:id", (req, res) => {
+  db.query("DELETE FROM mentor_availability WHERE id = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).json({ success: false });
+    res.json({ success: true });
+  });
+});
+
 app.delete("/bookings/:id", (req, res) => {
-  db.query("DELETE FROM bookings WHERE id = ?", [req.params.id], (err, result) => {
-    if (err) return res.status(500).json({ success: false, error: err.message });
-    res.json({ success: true, message: "Session removed successfully! ✅" });
+  db.query("DELETE FROM bookings WHERE id = ?", [req.params.id], (err) => {
+    res.json({ success: true });
   });
 });
 
