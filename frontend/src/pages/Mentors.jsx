@@ -9,7 +9,7 @@ export default function Mentors() {
 
   // FETCH DATA FROM DATABASE
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/approved-mentors`)
+    fetch(`${API_BASE_URL}/api/mentors`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch mentors");
         return res.json();
@@ -28,7 +28,7 @@ export default function Mentors() {
             role: m.title || "Faculty Mentor",
             bio: m.bio || "No biography provided yet.",
             // UPDATED: Use m.image_url from database, fallback to Unsplash if empty
-            image: m.image_url || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+            image: m.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
             skills: parsedSkills
           };
         });

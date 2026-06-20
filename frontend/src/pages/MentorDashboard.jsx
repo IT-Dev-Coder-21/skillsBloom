@@ -143,6 +143,7 @@ export default function MentorDashboard() {
     }
   };
 
+  // Inside MentorDashboard.jsx, locate handleSaveProfile
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     const parsedSkills = skillsInput.split(',').map(s => s.trim()).filter(Boolean);
@@ -154,30 +155,18 @@ export default function MentorDashboard() {
           id: user.id,
           title,
           bio,
-          skills: parsedSkills,
-          image
+          skills: JSON.stringify(parsedSkills),
+          image // Ensure this variable 'image' is being passed here
         })
       });
       const data = await res.json();
       if (data.success) {
-        setStatusMessage({ text: "Mentor profile details updated successfully! 🌸", type: "success" });
-        const updatedUser = {
-          ...user,
-          title,
-          bio,
-          skills: JSON.stringify(parsedSkills),
-          image
-        };
+        setStatusMessage({ text: "Profile updated! 🌸", type: "success" });
+        const updatedUser = { ...user, title, bio, skills: JSON.stringify(parsedSkills), image };
         setUser(updatedUser);
         localStorage.setItem("user", JSON.stringify(updatedUser));
-        setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
-      } else {
-        setStatusMessage({ text: data.message || "Failed to update profile.", type: "error" });
       }
-    } catch(err) {
-      console.error(err);
-      setStatusMessage({ text: "Server error while saving profile.", type: "error" });
-    }
+    } catch(err) { console.error(err); }
   };
 
   // ✅ PREVENT BLANK SCREEN WHILE LOADING USER

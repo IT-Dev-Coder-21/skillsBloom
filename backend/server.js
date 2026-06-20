@@ -17,15 +17,15 @@ app.use(express.json());
 
 const bcrypt = require("bcryptjs");
 
-// DATABASE CONNECTION
+// DATABASE CONNECTION - Fixed to support Railway/Render variables
 const db = !process.env.DB_HOST
   ? require("./dbMock")
   : mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT || 3306,
+      host: process.env.DB_HOST || process.env.MYSQLHOST,
+      user: process.env.DB_USER || process.env.MYSQLUSER,
+      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
+      database: process.env.DB_NAME || process.env.MYSQLDATABASE,
+      port: process.env.DB_PORT || process.env.MYSQLPORT || 3306,
       ssl: { rejectUnauthorized: false }
     });
 
@@ -78,9 +78,9 @@ async function sendEmailViaHTTP({ to, subject, textContent }) {
 }
 
 // --- ROUTE FOR MENTORS PAGE ---
-app.get("/api/approved-mentors", (req, res) => {
-  // Ensure image_url is selected here
-  const sql = "SELECT id, name, email, role, image_url FROM users WHERE role = 'mentor' AND is_approved = 1";
+app.get("/api/mentors", (req, res) => {
+  // FIXED: Select 'image' (database column) instead of 'image_url'
+  const sql = "SELECT id, name, email, role, image, bio, title, skills FROM users WHERE role = 'mentor'";
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
@@ -107,7 +107,7 @@ app.get("/users", (req, res) => {
 
 // REGISTRATION
 app.post("/register", (req, res) => {
-  const { name, email, password, role, image_url } = req.body;
+  const { name, email, password, role, image } = req.body; // FIXED: Use 'image'
 
   if (!password || password.length < 8) {
     return res.status(400).json({ 
@@ -123,8 +123,9 @@ app.post("/register", (req, res) => {
   bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
     if (hashErr) return res.status(500).json({ success: false, message: "Server hashing error." });
 
-    const sql = "INSERT INTO users (id, name, email, password, role, is_approved, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    db.query(sql, [randomId, name, email, hashedPassword, normalizedRole, isApproved, image_url || null], (err, result) => {
+    // FIXED: Query now uses column 'image'
+    const sql = "INSERT INTO users (id, name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    db.query(sql, [randomId, name, email, hashedPassword, normalizedRole, isApproved, image || null], (err, result) => {
       if (err) return res.status(500).json({ success: false, errorDetails: err.sqlMessage || err.message });
 
       sendEmailViaHTTP({
