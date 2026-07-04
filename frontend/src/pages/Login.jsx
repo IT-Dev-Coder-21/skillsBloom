@@ -105,7 +105,11 @@ function Login() {
           <Link to="/" style={{ textDecoration: 'none', color: 'white' }}>
             <h1>🌱 Skills Bloom</h1>
           </Link>
-          <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>☰</div>
+
+          <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
+            ☰
+          </div>
+
           <ul className={`nav-links ${menuOpen ? "active" : ""}`}>
             <li><Link to="/">Home</Link></li>
             <li><Link to="/about">About</Link></li>
@@ -113,6 +117,10 @@ function Login() {
             <li><Link to="/mentors">Meet Our Mentors</Link></li>
             <li><Link to="/login">Login</Link></li>
           </ul>
+
+          <div className="codeblossom-logo">
+            <img src="https://th.bing.com/th/id/OIP.SVdxgXyujak8uf6YzJ-segAAAA?w=150&h=150&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3" alt="Skills Bloom Logo" />
+          </div>
         </nav>
       </header>
 

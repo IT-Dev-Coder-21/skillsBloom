@@ -168,7 +168,9 @@ export default function About() {
         <div className="footer-content">
           <div className="footer-logo">
             <h3>🌱 Skills Bloom</h3>
-            <p>Empowering the next generation of developers</p>
+            <p>At Skills Bloom, we are dedicated to bridging the gap between ambitious students and experienced industry mentors. 
+    Our mission is to foster a collaborative ecosystem where technical knowledge is shared, professional growth 
+    is accelerated, and the next generation of innovators is empowered to solve real-world challenges.</p>
           </div>
           <div className="footer-links">
             <Link to="/">Home</Link>
