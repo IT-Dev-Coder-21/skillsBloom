@@ -91,31 +91,72 @@ app.get("/users", (req, res) => {
 });
 
 // REGISTRATION & LOGIN
+// REGISTRATION ROUTE
 app.post("/register", (req, res) => {
   const { name, email, password, role, image } = req.body;
   if (!password || password.length < 8) return res.status(400).json({ success: false, message: "Password too short." });
+  
   const normalizedRole = role ? role.toLowerCase() : "student";
   const isApproved = normalizedRole === 'mentor' ? 0 : 1; 
+  
   bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
+    if (hashErr) return res.status(500).json({ success: false, message: "Error processing account." });
+    
     const sql = "INSERT INTO users (name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?)";
     db.query(sql, [name, email, hashedPassword, normalizedRole, isApproved, image || null], (err) => {
-      if (err) return res.status(500).json({ success: false, errorDetails: err.message });
-      res.json({ success: true, message: "Account created successfully! 📥" });
+      if (err) return res.status(500).json({ success: false, message: "Error saving account: " + err.message });
+      
+      // Clear message logic restored
+      const message = normalizedRole === 'mentor' 
+        ? "Account created! Please wait for admin approval." 
+        : "Account created successfully!";
+      
+      res.json({ success: true, message: message });
     });
   });
 });
 
+// LOGIN ROUTE
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
+  
   db.query("SELECT * FROM users WHERE email = ?", [email], async (err, result) => {
-    if (result.length > 0 && await bcrypt.compare(password, result[0].password)) {
-      res.json({ success: true, user: result[0] });
-    } else {
-      res.json({ success: false, message: "Invalid credentials" });
+    if (err) return res.status(500).json({ success: false, message: "Database error." });
+    
+    if (result.length === 0) {
+      return res.json({ success: false, message: "Invalid email or password." });
     }
+
+    const user = result[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+    
+    if (!isMatch) {
+      return res.json({ success: false, message: "Invalid email or password." });
+    }
+
+    // Check for Mentor Approval
+    if (user.role === 'mentor' && user.is_approved === 0) {
+      return res.json({ 
+        success: false, 
+        message: "Your account is still pending admin approval." 
+      });
+    }
+
+    // Success response
+    res.json({ 
+      success: true, 
+      message: "Login successful!", 
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        image: user.image,
+        is_approved: user.is_approved // Frontend needs this!
+      }
+    });
   });
 });
-
 // ADMIN & BOOKING ROUTES
 app.get("/admin/pending-mentors", (req, res) => {
   db.query("SELECT id, name, email FROM users WHERE role = 'mentor' AND is_approved = 0", (err, results) => {

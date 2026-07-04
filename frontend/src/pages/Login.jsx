@@ -14,7 +14,7 @@ function Login() {
     email: "",
     password: "",
     role: "student",
-    image_url: "" // NEW: Added field
+    image: "" // NEW: Added field
   });
 
   const navigate = useNavigate();
