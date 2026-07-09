@@ -20,6 +20,12 @@ export default function MentorDashboard() {
 
   const navigate = useNavigate();
 
+  // Helper to get headers
+  const getHeaders = () => ({
+    "Content-Type": "application/json",
+    "Authorization": localStorage.getItem("token")
+  });
+
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("user");
@@ -36,13 +42,13 @@ export default function MentorDashboard() {
   }, [navigate]);
 
   const fetchBookings = (mentorName) => {
-    fetch(`${API_BASE_URL}/bookings`)
+    fetch(`${API_BASE_URL}/bookings`, { headers: getHeaders() })
       .then(res => res.json())
       .then(data => setBookings(data.filter(b => b.mentorName?.toLowerCase() === mentorName.toLowerCase())));
   };
 
   const fetchAvailability = (email) => {
-    fetch(`${API_BASE_URL}/mentor/slots/${email}`)
+    fetch(`${API_BASE_URL}/mentor/slots/${email}`, { headers: getHeaders() })
       .then(res => res.json())
       .then(data => setAvailabilityList(data));
   };
@@ -51,7 +57,7 @@ export default function MentorDashboard() {
     e.preventDefault();
     const res = await fetch(`${API_BASE_URL}/mentor/add-slot`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders(),
       body: JSON.stringify({ email: user.email, date: dayOfWeek, time: `${startTime} - ${endTime}` })
     });
     const result = await res.json();
@@ -63,7 +69,10 @@ export default function MentorDashboard() {
 
   const deleteSlot = async (slotId) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/mentor/slots/${slotId}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE_URL}/mentor/slots/${slotId}`, { 
+        method: "DELETE",
+        headers: getHeaders() 
+      });
       const result = await res.json();
       if (result.success) {
         setStatusMessage({ text: "Slot removed successfully.", type: "success" });
@@ -80,7 +89,7 @@ export default function MentorDashboard() {
     e.preventDefault();
     const res = await fetch(`${API_BASE_URL}/mentor/profile`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders(),
       body: JSON.stringify({ email: user.email, title, bio, skills: skillsInput, image })
     });
     if (res.ok) setStatusMessage({ text: "Your profile has been updated.", type: "success" });
@@ -90,6 +99,7 @@ export default function MentorDashboard() {
 
   return (
     <div className="dashboard-page" style={{ padding: "20px" }}>
+      {/* ... (Keep your existing JSX the same as before) ... */}
       <header className="dashboard-topbar" style={{ borderBottom: "2px solid #673ab7", paddingBottom: "10px", marginBottom: "20px" }}>
         <h2>🌱 Skills Bloom</h2>
         <h1>Welcome Back, {user?.name}</h1>

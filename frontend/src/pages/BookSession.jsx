@@ -127,7 +127,8 @@ export default function BookSession() {
       const res = await fetch(`${API_BASE_URL}/bookings`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Authorization": localStorage.getItem("token") // ✅ Added Authorization
         },
         body: JSON.stringify(newBooking)
       });

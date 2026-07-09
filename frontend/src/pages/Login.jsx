@@ -14,7 +14,7 @@ function Login() {
     email: "",
     password: "",
     role: "student",
-    image: "" // NEW: Added field
+    image: "" 
   });
 
   const navigate = useNavigate();
@@ -76,7 +76,10 @@ function Login() {
             return;
           }
 
+          // --- JWT STORAGE ---
           localStorage.setItem("user", JSON.stringify(loggedInUser));
+          localStorage.setItem("token", data.token); // Store the JWT here
+          
           setForm({ name: "", email: "", password: "", role: "student", image_url: "" });
 
           setTimeout(() => {
@@ -144,7 +147,6 @@ function Login() {
             {isRegister && (
               <>
                 <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} required />
-                {/* NEW: Only show image_url if role is mentor */}
                 {form.role === "mentor" && (
                   <input name="image_url" placeholder="Profile Picture URL" value={form.image_url} onChange={handleChange} />
                 )}

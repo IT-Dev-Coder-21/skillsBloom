@@ -7,7 +7,11 @@ export default function AdminDashboard() {
 
   // Fetch pending mentors on load
   useEffect(() => {
-    fetch(`${API_BASE_URL}/admin/pending-mentors`)
+    fetch(`${API_BASE_URL}/admin/pending-mentors`, {
+      headers: {
+        "Authorization": localStorage.getItem("token")
+      }
+    })
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -21,7 +25,10 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/approve-mentor`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": localStorage.getItem("token") // Added Authorization
+        },
         body: JSON.stringify({ mentorId })
       });
       
@@ -80,7 +87,6 @@ export default function AdminDashboard() {
               <tr key={mentor.id} style={{ borderBottom: "1px solid #eee", verticalAlign: "middle" }}>
                 <td style={{ padding: "12px 15px", color: "#666", fontSize: "14px" }}>{mentor.id}</td>
                 
-                {/* 🖼️ DEFAULT PROFILE PICTURE DISPLAY ADDED HERE */}
                 <td style={{ padding: "12px 15px" }}>
                   <img 
                     src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 

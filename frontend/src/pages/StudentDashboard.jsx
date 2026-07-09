@@ -11,13 +11,19 @@ export default function StudentDashboard() {
   
   const navigate = useNavigate();
 
+  // Helper to get secured headers
+  const getHeaders = () => ({
+    "Content-Type": "application/json",
+    "Authorization": localStorage.getItem("token")
+  });
+
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem("user"));
     if (!u) return navigate("/login");
     setUser(u);
 
     // Fetch Dynamic Mentors from Database
-    fetch(`${API_BASE_URL}/api/mentors`)
+    fetch(`${API_BASE_URL}/api/mentors`, { headers: getHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch mentors");
         return res.json();
@@ -32,7 +38,7 @@ export default function StudentDashboard() {
           }
           return {
             name: m.name,
-            role: m.title || "Faculty Mentor",
+            role: m.title || "Mentor",
             bio: m.bio || "No biography provided yet.",
             image: m.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
             skills: parsedSkills
@@ -43,7 +49,7 @@ export default function StudentDashboard() {
       .catch((err) => console.error("Error fetching mentors:", err));
 
     // Fetch Bookings
-    fetch(`${API_BASE_URL}/bookings`)
+    fetch(`${API_BASE_URL}/bookings`, { headers: getHeaders() })
       .then((res) => res.json())
       .then((data) => {
         const myBookings = data.filter(b => b.studentEmail === u.email);
@@ -56,7 +62,10 @@ export default function StudentDashboard() {
     if (!window.confirm("Are you sure you want to cancel this scheduled session? ⏳")) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, { 
+        method: "DELETE",
+        headers: getHeaders()
+      });
       const data = await res.json();
 
       if (data.success) {

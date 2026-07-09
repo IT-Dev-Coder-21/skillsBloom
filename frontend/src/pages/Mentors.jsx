@@ -25,9 +25,8 @@ export default function Mentors() {
           return {
             id: m.id,
             name: m.name,
-            role: m.title || "Faculty Mentor",
+            role: m.title || "Mentor",
             bio: m.bio || "No biography provided yet.",
-            // UPDATED: Use m.image_url from database, fallback to Unsplash if empty
             image: m.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
             skills: parsedSkills
           };
