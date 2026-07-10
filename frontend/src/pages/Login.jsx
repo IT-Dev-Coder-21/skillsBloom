@@ -14,7 +14,7 @@ function Login() {
     email: "",
     password: "",
     role: "student",
-    image: "" 
+    image_url: "" // Fixed: Changed from 'image' to 'image_url' to match inputs
   });
 
   const navigate = useNavigate();
@@ -50,9 +50,11 @@ function Login() {
       });
 
       const data = await res.json();
-
+      console.log("FULL SERVER RESPONSE:", data);
+      
       if (data.success) {
-        setStatusMessage({ text: `${data.message} 🚀`, type: "success" });
+        // FIXED: Added fallback to prevent "undefined"
+        setStatusMessage({ text: `${data.message || "Login Successful!"} 🚀`, type: "success" });
         setIsLoading(false);
 
         if (isRegister && (form.role === "mentor" || form.role === "Mentor")) {
@@ -78,7 +80,7 @@ function Login() {
 
           // --- JWT STORAGE ---
           localStorage.setItem("user", JSON.stringify(loggedInUser));
-          localStorage.setItem("token", data.token); // Store the JWT here
+          localStorage.setItem("token", data.token);
           
           setForm({ name: "", email: "", password: "", role: "student", image_url: "" });
 

@@ -26,8 +26,8 @@ export default function Mentors() {
             id: m.id,
             name: m.name,
             role: m.title || "Mentor",
-            bio: m.bio || "No biography provided yet.",
-            image: m.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+            bio: m.bio || "FullStack Developer",
+            image: m.image || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTF8lcfoid-LoJTXdstktO7Z9AvAF9UX9wRLlDvxHncVg&s=10",
             skills: parsedSkills
           };
         });

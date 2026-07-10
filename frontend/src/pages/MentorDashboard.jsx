@@ -20,10 +20,10 @@ export default function MentorDashboard() {
 
   const navigate = useNavigate();
 
-  // Helper to get headers
+  // FIXED: Added "Bearer " to the Authorization header
   const getHeaders = () => ({
     "Content-Type": "application/json",
-    "Authorization": localStorage.getItem("token")
+    "Authorization": `Bearer ${localStorage.getItem("token")}`
   });
 
   useEffect(() => {
@@ -41,29 +41,58 @@ export default function MentorDashboard() {
     } catch (err) { navigate("/login"); }
   }, [navigate]);
 
+  // FIXED: Added safety checks to prevent JSON parse crashes
   const fetchBookings = (mentorName) => {
     fetch(`${API_BASE_URL}/bookings`, { headers: getHeaders() })
-      .then(res => res.json())
-      .then(data => setBookings(data.filter(b => b.mentorName?.toLowerCase() === mentorName.toLowerCase())));
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch bookings");
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setBookings(data.filter(b => b.mentorName?.toLowerCase() === mentorName.toLowerCase()));
+        }
+      })
+      .catch(err => console.error("Error fetching bookings:", err));
   };
 
+  // FIXED: Added safety checks to prevent JSON parse crashes
   const fetchAvailability = (email) => {
     fetch(`${API_BASE_URL}/mentor/slots/${email}`, { headers: getHeaders() })
-      .then(res => res.json())
-      .then(data => setAvailabilityList(data));
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch slots");
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAvailabilityList(data);
+        } else {
+          setAvailabilityList([]);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching slots:", err);
+        setAvailabilityList([]);
+      });
   };
 
   const handlePublishSlot = async (e) => {
     e.preventDefault();
-    const res = await fetch(`${API_BASE_URL}/mentor/add-slot`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({ email: user.email, date: dayOfWeek, time: `${startTime} - ${endTime}` })
-    });
-    const result = await res.json();
-    if (result.success) {
-      setStatusMessage({ text: "Availability slot published successfully!", type: "success" });
-      fetchAvailability(user.email);
+    try {
+      const res = await fetch(`${API_BASE_URL}/mentor/add-slot`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ email: user.email, date: dayOfWeek, time: `${startTime} - ${endTime}` })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setStatusMessage({ text: "Availability slot published successfully!", type: "success" });
+        fetchAvailability(user.email);
+        setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
+      }
+    } catch (err) {
+      console.error("Error publishing slot:", err);
+      setStatusMessage({ text: "Failed to publish slot.", type: "error" });
     }
   };
 
@@ -77,6 +106,7 @@ export default function MentorDashboard() {
       if (result.success) {
         setStatusMessage({ text: "Slot removed successfully.", type: "success" });
         fetchAvailability(user.email);
+        setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
       } else {
         alert("Delete failed: " + (result.message || "Unknown error"));
       }
@@ -87,19 +117,25 @@ export default function MentorDashboard() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const res = await fetch(`${API_BASE_URL}/mentor/profile`, {
-      method: "PUT",
-      headers: getHeaders(),
-      body: JSON.stringify({ email: user.email, title, bio, skills: skillsInput, image })
-    });
-    if (res.ok) setStatusMessage({ text: "Your profile has been updated.", type: "success" });
+    try {
+      const res = await fetch(`${API_BASE_URL}/mentor/profile`, {
+        method: "PUT",
+        headers: getHeaders(),
+        body: JSON.stringify({ email: user.email, title, bio, skills: skillsInput, image })
+      });
+      if (res.ok) {
+        setStatusMessage({ text: "Your profile has been updated.", type: "success" });
+        setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
+      }
+    } catch (err) {
+      console.error("Error saving profile:", err);
+    }
   };
 
   const activeStudents = Array.from(new Map(bookings.map(b => [b.studentEmail, b])).values());
 
   return (
     <div className="dashboard-page" style={{ padding: "20px" }}>
-      {/* ... (Keep your existing JSX the same as before) ... */}
       <header className="dashboard-topbar" style={{ borderBottom: "2px solid #673ab7", paddingBottom: "10px", marginBottom: "20px" }}>
         <h2>🌱 Skills Bloom</h2>
         <h1>Welcome Back, {user?.name}</h1>
@@ -114,7 +150,7 @@ export default function MentorDashboard() {
       </nav>
 
       <main className="dashboard-content">
-        {statusMessage.text && <div className="status-banner" style={{ padding: "10px", background: "#e8f5e9", marginBottom: "15px", borderRadius: "5px" }}>{statusMessage.text}</div>}
+        {statusMessage.text && <div className="status-banner" style={{ padding: "10px", background: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee", color: statusMessage.type === "success" ? "#2e7d32" : "#c62828", marginBottom: "15px", borderRadius: "5px" }}>{statusMessage.text}</div>}
 
         {view === "home" && (
           <section>
@@ -180,8 +216,8 @@ export default function MentorDashboard() {
               <label>Image URL</label><input type="text" value={image} onChange={(e) => setImage(e.target.value)} style={{ padding: "10px" }} />
               <label>Biography</label><textarea value={bio} onChange={(e) => setBio(e.target.value)} rows="4" style={{ padding: "10px" }} />
               <label>Skills</label><input type="text" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} style={{ padding: "10px" }} />
-              <button type="submit" style={{ padding: "10px", background: "#673ab7", color: "white", border: "none" }}>Save Profile</button>
-              <button type="button" onClick={() => { localStorage.clear(); navigate("/login"); }} style={{ padding: "10px", background: "#333", color: "white", border: "none" }}>Sign Out</button>
+              <button type="submit" style={{ padding: "10px", background: "#673ab7", color: "white", border: "none", cursor: "pointer" }}>Save Profile</button>
+              <button type="button" onClick={() => { localStorage.clear(); navigate("/login"); }} style={{ padding: "10px", background: "#333", color: "white", border: "none", cursor: "pointer", marginTop: "10px" }}>Sign Out</button>
             </form>
           </section>
         )}

@@ -86,9 +86,8 @@ app.get("/api/mentors", (req, res, next) => {
     res.json(results);
   });
 });
-
-app.post("/register", (req, next, res) => {
-  const { name, email, password, role, image } = req.body;
+app.post("/register", (req, res, next) => { // Fixed parameter order (req, res, next)
+  const { name, email, password, role, image_url } = req.body;
   if (!password || password.length < 8) return res.status(400).json({ success: false, message: "Password too short." });
   
   const normalizedRole = role ? role.toLowerCase() : "student";
@@ -97,44 +96,51 @@ app.post("/register", (req, next, res) => {
   bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
     if (hashErr) return next(hashErr);
     
+    // Fixed: using image_url variable
     db.query("INSERT INTO users (name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?)", 
-    [name, email, hashedPassword, normalizedRole, isApproved, image || null], (err) => {
+    [name, email, hashedPassword, normalizedRole, isApproved, image_url || null], (err) => {
       if (err) return next(err);
       
-      // 1. Email to the Student (Confirmation)
       sendEmailViaHTTP({
         to: email,
         subject: "Welcome to Skills Bloom!",
-        textContent: `Hi ${name}, your account has been created successfully. Welcome to our learning community!`
+        textContent: `Hi ${name}, your account has been created successfully.`
       });
 
-      // 2. Email to the Skills Bloom Team (Admin Notification)
       sendEmailViaHTTP({
-        to: process.env.EMAIL_USER, // Sending notification to yourself/admin
+        to: process.env.EMAIL_USER,
         subject: "New User Registration",
-        textContent: `A new user has registered on Skills Bloom.\nName: ${name}\nEmail: ${email}\nRole: ${normalizedRole}`
+        textContent: `New user: ${name} (${email})`
       });
 
       res.json({ success: true, message: "Account created successfully!" });
     });
   });
 });
+
 app.post("/login", (req, res, next) => {
   const { email, password } = req.body;
   db.query("SELECT * FROM users WHERE email = ?", [email], async (err, result) => {
     if (err) return next(err);
-    if (result.length === 0) return res.json({ success: false, message: "Invalid email or password." });
+    if (result.length === 0) return res.json({ success: false, message: "Invalid credentials." });
 
     const user = result[0];
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.json({ success: false, message: "Invalid email or password." });
+    if (!isMatch) return res.json({ success: false, message: "Invalid credentials." });
 
     if (user.role === 'mentor' && user.is_approved === 0) {
-      return res.json({ success: false, message: "Your account is still pending admin approval." });
+      return res.json({ success: false, message: "Account pending approval." });
     }
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || "your_super_secret_key", { expiresIn: '24h' });
-    res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email, role: user.role, image: user.image, is_approved: user.is_approved } });
+    
+    // Added message field here to fix "undefined" message
+    res.json({ 
+        success: true, 
+        message: "Login Successful!", 
+        token, 
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, image: user.image, is_approved: user.is_approved } 
+    });
   });
 });
 
@@ -209,7 +215,13 @@ app.delete("/mentor/slots/:id", verifyToken, (req, res, next) => {
     res.json({ success: true });
   });
 });
-
+app.get("/mentor/slots/:email", verifyToken, (req, res, next) => {
+  const mentorEmail = req.params.email;
+  db.query("SELECT * FROM mentor_availability WHERE mentor_email = ?", [mentorEmail], (err, results) => {
+    if (err) return next(err);
+    res.json(results);
+  });
+});
 app.delete("/bookings/:id", verifyToken, (req, res, next) => {
   db.query("DELETE FROM bookings WHERE id = ?", [req.params.id], (err) => {
     if (err) return next(err);

@@ -14,7 +14,7 @@ export default function StudentDashboard() {
   // Helper to get secured headers
   const getHeaders = () => ({
     "Content-Type": "application/json",
-    "Authorization": localStorage.getItem("token")
+    "Authorization": `Bearer ${localStorage.getItem("token")}`
   });
 
   useEffect(() => {
@@ -29,6 +29,7 @@ export default function StudentDashboard() {
         return res.json();
       })
       .then((data) => {
+        if (!Array.isArray(data)) return;
         const dynamicMentors = data.map(m => {
           let parsedSkills = [];
           try {
@@ -39,8 +40,8 @@ export default function StudentDashboard() {
           return {
             name: m.name,
             role: m.title || "Mentor",
-            bio: m.bio || "No biography provided yet.",
-            image: m.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+            bio: m.bio || "FullStak Developer",
+            image: m.image || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTF8lcfoid-LoJTXdstktO7Z9AvAF9UX9wRLlDvxHncVg&s=10",
             skills: parsedSkills
           };
         });
@@ -48,14 +49,24 @@ export default function StudentDashboard() {
       })
       .catch((err) => console.error("Error fetching mentors:", err));
 
-    // Fetch Bookings
+    // Fetch Bookings (FIXED WITH SAFETY CHECK)
     fetch(`${API_BASE_URL}/bookings`, { headers: getHeaders() })
-      .then((res) => res.json())
-      .then((data) => {
-        const myBookings = data.filter(b => b.studentEmail === u.email);
-        setBookings(myBookings);
+      .then((res) => {
+        if (!res.ok) throw new Error("Unauthorized");
+        return res.json();
       })
-      .catch((err) => console.error("Error fetching bookings:", err));
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const myBookings = data.filter(b => b.studentEmail === u.email);
+          setBookings(myBookings);
+        } else {
+          setBookings([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching bookings:", err);
+        setBookings([]);
+      });
   }, [navigate]);
 
   const handleCancelBooking = async (bookingId) => {
