@@ -218,7 +218,7 @@ export default function BookSession() {
                 ) : (
                   <div>
                     {availability.length > 0 ? (
-                      <span style={{ color: "#c62828", fontWeight: "bold" }}>The mentor has no available slots scheduled on this day.</span>
+                      <span style={{ color: "#c62828", fontWeight: "bold" }}>The mentor has  available slots scheduled on this day.</span>
                     ) : (
                       <span style={{ color: "#777" }}>Defaulting to general hours (Mon-Fri 09:00 AM - 05:00 PM).</span>
                     )}

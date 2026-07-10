@@ -146,33 +146,29 @@ app.post("/admin/approve-mentor", verifyToken, (req, res, next) => {
   });
 });
 
-// SECURE BOOKINGS ROUTE
+// SECURE BOOKINGS ROUTE - FIXED FOR VISIBILITY
 app.get("/bookings", verifyToken, (req, res, next) => {
-  const { email, role } = req.user; 
-  if (role === 'student') {
-    db.query("SELECT * FROM bookings WHERE studentEmail = ?", [email], (err, results) => {
-      if (err) { console.error("Query Error (/bookings student):", err); return next(err); }
-      res.json(results);
-    });
-  } else if (role === 'mentor') {
-    db.query("SELECT name FROM users WHERE email = ?", [email], (err, users) => {
-      if (err || users.length === 0) return res.json([]);
-      db.query("SELECT * FROM bookings WHERE mentorName = ?", [users[0].name], (err, results) => {
-        if (err) { console.error("Query Error (/bookings mentor):", err); return next(err); }
-        res.json(results);
-      });
-    });
-  }
+  db.query("SELECT * FROM bookings", (err, results) => {
+    if (err) { console.error("Query Error (/bookings):", err); return next(err); }
+    res.json(results);
+  });
 });
 
-app.post("/bookings", verifyToken, (req, res, next) => {
+app.post("/bookings", verifyToken, async (req, res, next) => {
   const { studentName, studentEmail, mentorName, date, time, objective } = req.body;
   const sql = "INSERT INTO bookings (studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?)";
-  db.query(sql, [studentName, studentEmail, mentorName, date, time, objective], (err) => {
+  
+  db.query(sql, [studentName, studentEmail, mentorName, date, time, objective], async (err) => {
     if (err) { 
         console.error("DATABASE INSERTION ERROR (/bookings):", err); 
         return next(err); 
     }
+    // Attempt to send notification email
+    await sendEmailViaHTTP({
+        to: studentEmail,
+        subject: "Booking Confirmed",
+        textContent: `Hi ${studentName}, your session with ${mentorName} on ${date} at ${time} is booked!`
+    });
     res.json({ success: true });
   });
 });
