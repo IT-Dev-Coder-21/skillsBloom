@@ -20,7 +20,7 @@ export default function MentorDashboard() {
 
   const navigate = useNavigate();
 
-  // FIXED: Added "Bearer " to the Authorization header
+  // ✅ UNIFIED HEADER HELPER: Use this for every fetch to prevent 401 errors
   const getHeaders = () => ({
     "Content-Type": "application/json",
     "Authorization": `Bearer ${localStorage.getItem("token")}`
@@ -41,35 +41,21 @@ export default function MentorDashboard() {
     } catch (err) { navigate("/login"); }
   }, [navigate]);
 
-  // FIXED: Added safety checks to prevent JSON parse crashes
   const fetchBookings = (mentorName) => {
     fetch(`${API_BASE_URL}/bookings`, { headers: getHeaders() })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch bookings");
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setBookings(data.filter(b => b.mentorName?.toLowerCase() === mentorName.toLowerCase()));
+          setBookings(data.filter(b => b.mentorName?.toLowerCase() === mentorName?.toLowerCase()));
         }
       })
       .catch(err => console.error("Error fetching bookings:", err));
   };
 
-  // FIXED: Added safety checks to prevent JSON parse crashes
   const fetchAvailability = (email) => {
     fetch(`${API_BASE_URL}/mentor/slots/${email}`, { headers: getHeaders() })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch slots");
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data)) {
-          setAvailabilityList(data);
-        } else {
-          setAvailabilityList([]);
-        }
-      })
+      .then(res => res.json())
+      .then(data => setAvailabilityList(Array.isArray(data) ? data : []))
       .catch(err => {
         console.error("Error fetching slots:", err);
         setAvailabilityList([]);
@@ -91,7 +77,6 @@ export default function MentorDashboard() {
         setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
       }
     } catch (err) {
-      console.error("Error publishing slot:", err);
       setStatusMessage({ text: "Failed to publish slot.", type: "error" });
     }
   };
@@ -106,13 +91,8 @@ export default function MentorDashboard() {
       if (result.success) {
         setStatusMessage({ text: "Slot removed successfully.", type: "success" });
         fetchAvailability(user.email);
-        setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
-      } else {
-        alert("Delete failed: " + (result.message || "Unknown error"));
       }
-    } catch (err) {
-      console.error("Network error:", err);
-    }
+    } catch (err) { console.error("Network error:", err); }
   };
 
   const handleSaveProfile = async (e) => {
@@ -124,13 +104,13 @@ export default function MentorDashboard() {
         body: JSON.stringify({ email: user.email, title, bio, skills: skillsInput, image })
       });
       if (res.ok) {
-        setStatusMessage({ text: "Your profile has been updated.", type: "success" });
+        setStatusMessage({ text: "Profile updated successfully.", type: "success" });
         setTimeout(() => setStatusMessage({ text: "", type: "" }), 3000);
       }
-    } catch (err) {
-      console.error("Error saving profile:", err);
-    }
+    } catch (err) { console.error("Error saving profile:", err); }
   };
+
+  if (!user) return <div style={{ padding: "40px", textAlign: "center" }}><h2>Loading Mentor Dashboard...</h2></div>;
 
   const activeStudents = Array.from(new Map(bookings.map(b => [b.studentEmail, b])).values());
 
@@ -138,7 +118,7 @@ export default function MentorDashboard() {
     <div className="dashboard-page" style={{ padding: "20px" }}>
       <header className="dashboard-topbar" style={{ borderBottom: "2px solid #673ab7", paddingBottom: "10px", marginBottom: "20px" }}>
         <h2>🌱 Skills Bloom</h2>
-        <h1>Welcome Back, {user?.name}</h1>
+        <h1>Welcome Back, {user.name}</h1>
       </header>
 
       <nav className="dashboard-nav" style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
@@ -150,15 +130,14 @@ export default function MentorDashboard() {
       </nav>
 
       <main className="dashboard-content">
-        {statusMessage.text && <div className="status-banner" style={{ padding: "10px", background: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee", color: statusMessage.type === "success" ? "#2e7d32" : "#c62828", marginBottom: "15px", borderRadius: "5px" }}>{statusMessage.text}</div>}
+        {statusMessage.text && <div style={{ padding: "10px", background: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee", color: statusMessage.type === "success" ? "#2e7d32" : "#c62828", marginBottom: "15px", borderRadius: "5px" }}>{statusMessage.text}</div>}
 
         {view === "home" && (
           <section>
             <h3>Dashboard Overview</h3>
-            <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
-              <div className="card" style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}><h3>{bookings.length}</h3><p>Booked Sessions</p></div>
-              <div className="card" style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}><h3>{activeStudents.length}</h3><p>Active Students</p></div>
-              <div className="card" style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}><h3>5.0</h3><p>Mentor Rating</p></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
+              <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}><h3>{bookings.length}</h3><p>Booked Sessions</p></div>
+              <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}><h3>{activeStudents.length}</h3><p>Active Students</p></div>
             </div>
           </section>
         )}
@@ -189,7 +168,7 @@ export default function MentorDashboard() {
         {view === "availability" && (
           <section>
             <h3>Set Weekly Availability</h3>
-            <form onSubmit={handlePublishSlot} className="professional-form" style={{ background: "#f9f9f9", padding: "20px", borderRadius: "8px" }}>
+            <form onSubmit={handlePublishSlot} style={{ background: "#f9f9f9", padding: "20px", borderRadius: "8px" }}>
               <select onChange={(e) => setDayOfWeek(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option></select>
               <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
                 <input type="time" onChange={(e) => setStartTime(e.target.value)} required style={{ flex: 1, padding: "10px" }} />
