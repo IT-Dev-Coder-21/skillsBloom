@@ -122,14 +122,32 @@ app.post("/register", (req, res, next) => {
   });
 });
 app.post("/login", (req, res, next) => {
-  const { email, password } = req.body;
+  // Use .trim() to ensure no accidental spaces are causing issues
+  const email = req.body.email.trim(); 
+  const password = req.body.password;
+
   db.query("SELECT * FROM users WHERE email = ?", [email], async (err, result) => {
     if (err) return next(err);
-    if (result.length === 0) return res.json({ success: false, message: "Invalid credentials." });
+    if (result.length === 0) {
+        console.log("Login Failed: Email not found in DB.");
+        return res.json({ success: false, message: "Invalid credentials." });
+    }
 
     const user = result[0];
+    
+    // --- DIAGNOSTIC LOGS ---
+    console.log("--- LOGIN ATTEMPT ---");
+    console.log("Email:", user.email);
+    console.log("Hash from DB:", user.password);
+    console.log("Length of Hash:", user.password.length); // If this is less than 60, your DB chopped it!
+    // -----------------------
+
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.json({ success: false, message: "Invalid credentials." });
+    
+    if (!isMatch) {
+        console.log("Login Failed: Passwords do not match.");
+        return res.json({ success: false, message: "Invalid credentials." });
+    }
 
     if (user.role === 'mentor' && user.is_approved === 0) {
       return res.json({ success: false, message: "Account pending approval." });
@@ -137,7 +155,6 @@ app.post("/login", (req, res, next) => {
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || "your_super_secret_key", { expiresIn: '24h' });
     
-    // Added message field here to fix "undefined" message
     res.json({ 
         success: true, 
         message: "Login Successful!", 
@@ -146,7 +163,6 @@ app.post("/login", (req, res, next) => {
     });
   });
 });
-
 // PROTECTED ROUTES
 app.get("/admin/pending-mentors", verifyToken, (req, res, next) => {
   db.query("SELECT id, name, email FROM users WHERE role = 'mentor' AND is_approved = 0", (err, results) => {
