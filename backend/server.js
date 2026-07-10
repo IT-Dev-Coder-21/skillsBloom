@@ -100,16 +100,17 @@ app.post("/register", (req, res, next) => {
     if (hashErr) return next(hashErr);
     
     db.query("INSERT INTO users (name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?)", 
-    [name, email, hashedPassword, normalizedRole, isApproved, image_url || null], (err) => {
+    [name, email, hashedPassword, normalizedRole, isApproved, image_url || null], async (err) => { // <--- Added 'async' here
       if (err) { console.error("Query Error (/register):", err); return next(err); }
+      
       await sendEmailViaHTTP({
         to: email,
         subject: "Welcome to Skills Bloom!",
         textContent: `Hi ${name}, your account has been created successfully.`
-    });
+      });
+      
       res.json({ success: true, message: "Account created successfully!" });
     });
-
   });
 });
 
