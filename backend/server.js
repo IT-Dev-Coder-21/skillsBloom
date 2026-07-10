@@ -84,7 +84,7 @@ async function sendEmailViaHTTP({ to, subject, textContent }) {
 // ROUTES
 app.get("/api/mentors", (req, res, next) => {
   db.query("SELECT id, name, email, role, image, bio, title, skills FROM users WHERE role = 'mentor'", (err, results) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/api/mentors):", err); return next(err); }
     res.json(results);
   });
 });
@@ -101,18 +101,18 @@ app.post("/register", (req, res, next) => {
     
     db.query("INSERT INTO users (name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?)", 
     [name, email, hashedPassword, normalizedRole, isApproved, image_url || null], (err) => {
-      if (err) return next(err);
+      if (err) { console.error("Query Error (/register):", err); return next(err); }
       res.json({ success: true, message: "Account created successfully!" });
     });
   });
 });
 
 app.post("/login", (req, res, next) => {
-  const email = req.body.email.trim(); 
+  const email = req.body.email ? req.body.email.trim() : "";
   const password = req.body.password;
 
   db.query("SELECT * FROM users WHERE email = ?", [email], async (err, result) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/login):", err); return next(err); }
     if (result.length === 0) return res.json({ success: false, message: "Invalid credentials." });
 
     const user = result[0];
@@ -134,31 +134,31 @@ app.post("/login", (req, res, next) => {
 // SECURE PROTECTED ROUTES
 app.get("/admin/pending-mentors", verifyToken, (req, res, next) => {
   db.query("SELECT id, name, email FROM users WHERE role = 'mentor' AND is_approved = 0", (err, results) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/admin/pending-mentors):", err); return next(err); }
     res.json(results);
   });
 });
 
 app.post("/admin/approve-mentor", verifyToken, (req, res, next) => {
   db.query("UPDATE users SET is_approved = 1 WHERE id = ?", [req.body.mentorId], (err) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/admin/approve-mentor):", err); return next(err); }
     res.json({ success: true });
   });
 });
 
-// SECURE BOOKINGS ROUTE - FILTERED
-app.get("/bookings", verifyToken,  (req, res, next) => {
+// SECURE BOOKINGS ROUTE
+app.get("/bookings", verifyToken, (req, res, next) => {
   const { email, role } = req.user; 
   if (role === 'student') {
     db.query("SELECT * FROM bookings WHERE studentEmail = ?", [email], (err, results) => {
-      if (err) return next(err);
+      if (err) { console.error("Query Error (/bookings student):", err); return next(err); }
       res.json(results);
     });
   } else if (role === 'mentor') {
     db.query("SELECT name FROM users WHERE email = ?", [email], (err, users) => {
       if (err || users.length === 0) return res.json([]);
       db.query("SELECT * FROM bookings WHERE mentorName = ?", [users[0].name], (err, results) => {
-        if (err) return next(err);
+        if (err) { console.error("Query Error (/bookings mentor):", err); return next(err); }
         res.json(results);
       });
     });
@@ -167,9 +167,12 @@ app.get("/bookings", verifyToken,  (req, res, next) => {
 
 app.post("/bookings", verifyToken, (req, res, next) => {
   const { studentName, studentEmail, mentorName, date, time, objective } = req.body;
-  db.query("INSERT INTO bookings (studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?)", 
-  [studentName, studentEmail, mentorName, date, time, objective], (err) => {
-    if (err) return next(err);
+  const sql = "INSERT INTO bookings (studentName, studentEmail, mentorName, date, time, objective) VALUES (?, ?, ?, ?, ?, ?)";
+  db.query(sql, [studentName, studentEmail, mentorName, date, time, objective], (err) => {
+    if (err) { 
+        console.error("DATABASE INSERTION ERROR (/bookings):", err); 
+        return next(err); 
+    }
     res.json({ success: true });
   });
 });
@@ -177,44 +180,43 @@ app.post("/bookings", verifyToken, (req, res, next) => {
 app.post("/mentor/add-slot", verifyToken, (req, res, next) => {
   db.query("INSERT INTO mentor_availability (mentor_email, available_date, available_time) VALUES (?, ?, ?)", 
   [req.body.email, req.body.date, req.body.time], (err) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/mentor/add-slot):", err); return next(err); }
     res.json({ success: true });
   });
 });
 
 app.delete("/mentor/slots/:id", verifyToken, (req, res, next) => {
   db.query("DELETE FROM mentor_availability WHERE id = ?", [req.params.id], (err) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/mentor/slots delete):", err); return next(err); }
     res.json({ success: true });
   });
 });
 
 app.get("/mentor/slots/:email", verifyToken, (req, res, next) => {
   db.query("SELECT * FROM mentor_availability WHERE mentor_email = ?", [req.params.email], (err, results) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/mentor/slots get):", err); return next(err); }
     res.json(results);
   });
 });
 
 app.delete("/bookings/:id", verifyToken, (req, res, next) => {
   db.query("DELETE FROM bookings WHERE id = ?", [req.params.id], (err) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/bookings delete):", err); return next(err); }
     res.json({ success: true });
   });
 });
 
-// PROFILE UPDATES
 app.put("/mentor/profile", verifyToken, (req, res, next) => {
   const { email, title, bio, skills, image } = req.body;
   db.query("UPDATE users SET title = ?, bio = ?, skills = ?, image = ? WHERE email = ?", [title, bio, skills, image, email], (err) => {
-    if (err) return next(err);
+    if (err) { console.error("Query Error (/mentor/profile):", err); return next(err); }
     res.json({ success: true });
   });
 });
 
 // CENTRAL ERROR HANDLER
 app.use((err, req, res, next) => {
-  console.error("LOGGED ERROR:", err.stack);
+  console.error("GLOBAL ERROR HANDLER:", err.stack);
   res.status(500).json({ success: false, message: "A server error occurred." });
 });
 

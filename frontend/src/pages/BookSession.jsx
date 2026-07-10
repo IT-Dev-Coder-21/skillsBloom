@@ -90,7 +90,7 @@ export default function BookSession() {
     const dayName = days[date.getDay()];
 
     const slots = availability.filter(a => a.day_of_week && a.day_of_week.toLowerCase() === dayName.toLowerCase());
-    
+    /*
     if (availability.length > 0) {
       if (slots.length === 0) {
         setStatusMessage({ text: `The mentor is not available on ${dayName}s! ⚠️`, type: "error" });
@@ -109,7 +109,7 @@ export default function BookSession() {
         setStatusMessage({ text: `Selected time is outside the mentor's available slots on ${dayName}s (${slotRanges})! ⚠️`, type: "error" });
         return;
       }
-    }
+    }*/
 
     const newBooking = {
       mentorName: mentorName,
