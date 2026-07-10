@@ -14,7 +14,7 @@ const { verifyToken } = require('./authMiddleware');
 const app = express();
 
 app.use(cors({ 
-    origin: "*", 
+    origin: ["http://localhost:5173", "https://skills-bloom.vercel.app"], 
     methods: ["GET", "POST", "PUT", "DELETE"], 
     credentials: true 
 }));
@@ -86,7 +86,7 @@ app.get("/api/mentors", (req, res, next) => {
     res.json(results);
   });
 });
-app.post("/register", (req, res, next) => { // Fixed parameter order (req, res, next)
+app.post("/register", (req, res, next) => { 
   const { name, email, password, role, image_url } = req.body;
   if (!password || password.length < 8) return res.status(400).json({ success: false, message: "Password too short." });
   
@@ -96,28 +96,31 @@ app.post("/register", (req, res, next) => { // Fixed parameter order (req, res, 
   bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
     if (hashErr) return next(hashErr);
     
-    // Fixed: using image_url variable
     db.query("INSERT INTO users (name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?)", 
     [name, email, hashedPassword, normalizedRole, isApproved, image_url || null], (err) => {
       if (err) return next(err);
       
-      sendEmailViaHTTP({
-        to: email,
-        subject: "Welcome to Skills Bloom!",
-        textContent: `Hi ${name}, your account has been created successfully.`
-      });
+      // THE FIX: Wrap emails in try...catch so a failed email doesn't break registration!
+      try {
+          sendEmailViaHTTP({
+            to: email,
+            subject: "Welcome to Skills Bloom!",
+            textContent: `Hi ${name}, your account has been created successfully.`
+          });
 
-      sendEmailViaHTTP({
-        to: process.env.EMAIL_USER,
-        subject: "New User Registration",
-        textContent: `New user: ${name} (${email})`
-      });
+          sendEmailViaHTTP({
+            to: process.env.EMAIL_USER,
+            subject: "New User Registration",
+            textContent: `New user: ${name} (${email})`
+          });
+      } catch (emailErr) {
+          console.error("Email failed, but user was saved:", emailErr);
+      }
 
       res.json({ success: true, message: "Account created successfully!" });
     });
   });
 });
-
 app.post("/login", (req, res, next) => {
   const { email, password } = req.body;
   db.query("SELECT * FROM users WHERE email = ?", [email], async (err, result) => {
