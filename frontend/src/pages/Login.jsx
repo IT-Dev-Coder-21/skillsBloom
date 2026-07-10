@@ -14,7 +14,7 @@ function Login() {
     email: "",
     password: "",
     role: "student",
-    image_url: "" // Fixed: Changed from 'image' to 'image_url' to match inputs
+    image_url: "" 
   });
 
   const navigate = useNavigate();
@@ -50,46 +50,49 @@ function Login() {
       });
 
       const data = await res.json();
-      console.log("FULL SERVER RESPONSE:", data);
       
       if (data.success) {
-        // FIXED: Added fallback to prevent "undefined"
-        setStatusMessage({ text: `${data.message || "Login Successful!"} 🚀`, type: "success" });
-        setIsLoading(false);
-
-        if (isRegister && (form.role === "mentor" || form.role === "Mentor")) {
+        
+        // --- 1. IF THEY JUST REGISTERED ---
+        if (isRegister) {
+          setStatusMessage({ text: "Account created successfully! Please log in. 🎉", type: "success" });
+          setIsLoading(false);
+          
           setTimeout(() => {
             setForm({ name: "", email: "", password: "", role: "student", image_url: "" });
-            setIsRegister(false); 
+            setIsRegister(false); // Switch to the login view
             setStatusMessage({ text: "", type: "" });
-          }, 2500);
+          }, 2000);
           return;
         }
+
+        // --- 2. IF THEY JUST LOGGED IN ---
+        setStatusMessage({ text: `${data.message || "Login Successful!"} 🚀`, type: "success" });
+        setIsLoading(false);
 
         const loggedInUser = data.user;
         
         if (loggedInUser) {
-          const userRole = loggedInUser.role ? loggedInUser.role.toLowerCase() : "";
+          const userRole = loggedInUser.role ? loggedInUser.role.toLowerCase() : "student";
           const isApproved = loggedInUser.is_approved;
 
           if (userRole === "mentor" && isApproved === 0) {
-            setStatusMessage({ text: "Your account is still pending admin approval. ⏳", type: "error" });
-            setIsLoading(false);
+            setStatusMessage({ text: "Your mentor account is still pending admin approval. ⏳", type: "error" });
             return;
           }
 
-          // --- JWT STORAGE ---
+          // Save JWT and user to Local Storage
           localStorage.setItem("user", JSON.stringify(loggedInUser));
           localStorage.setItem("token", data.token);
           
           setForm({ name: "", email: "", password: "", role: "student", image_url: "" });
 
+          // Navigate based on role from database
           setTimeout(() => {
             setStatusMessage({ text: "", type: "" });
             if (userRole === "admin") navigate("/admin-control");
-            else if (userRole === "student") navigate("/student-dashboard");
             else if (userRole === "mentor") navigate("/mentor-dashboard");
-            else navigate("/");
+            else navigate("/student-dashboard");
           }, 1500);
         }
       } else {
@@ -98,7 +101,7 @@ function Login() {
       }
     } catch (err) {
       console.error(err);
-      setStatusMessage({ text: "Server connection error — is the backend database running? 🖥️", type: "error" });
+      setStatusMessage({ text: "Server connection error. 🖥️", type: "error" });
       setIsLoading(false);
     }
   };
@@ -132,7 +135,7 @@ function Login() {
       <section className="login-hero">
         <div className="login-content">
           <form onSubmit={handleSubmit} className="auth-container">
-            <h1>{isRegister ? "Create Account" : "Welcome"}</h1>
+            <h1>{isRegister ? "Create Account" : "Welcome Back"}</h1>
             
             {statusMessage.text && (
               <div style={{ padding: "12px", borderRadius: "6px", marginBottom: "15px", backgroundColor: statusMessage.type === "success" ? "#e8f5e9" : "#ffebee", color: statusMessage.type === "success" ? "#2e7d32" : "#c62828", border: statusMessage.type === "success" ? "1px solid #a5d6a7" : "1px solid #ef9a9a", textAlign: "center" }}>
@@ -140,17 +143,20 @@ function Login() {
               </div>
             )}
 
-            <select name="role" value={form.role} onChange={handleChange} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
-              <option value="student">Student</option>
-              <option value="mentor">Mentor</option>
-              <option value="admin">Platform Administrator</option>
-            </select>
+            {/* ONLY show the role dropdown when REGISTERING */}
+            {isRegister && (
+              <select name="role" value={form.role} onChange={handleChange} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+                <option value="student">Student</option>
+                <option value="mentor">Mentor</option>
+                <option value="admin">Platform Administrator</option>
+              </select>
+            )}
 
             {isRegister && (
               <>
                 <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} required />
                 {form.role === "mentor" && (
-                  <input name="image_url" placeholder="Profile Picture URL" value={form.image_url} onChange={handleChange} />
+                  <input name="image_url" placeholder="Profile Picture URL (Optional)" value={form.image_url} onChange={handleChange} />
                 )}
               </>
             )}
@@ -167,11 +173,11 @@ function Login() {
             />
 
             <button type="submit" className="login-btn" disabled={isLoading} style={{ opacity: isLoading ? 0.6 : 1 }}>
-              {isLoading ? (isRegister ? "Signing Up..." : "Logging In...") : (isRegister ? "Sign Up" : "Login")}
+              {isLoading ? (isRegister ? "Creating..." : "Logging In...") : (isRegister ? "Sign Up" : "Login")}
             </button>
 
-            <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} style={{ cursor: "pointer", marginTop: "15px" }}>
-              {isRegister ? "Already have an account? Login" : "Don't have an account? Sign up"}
+            <p onClick={() => { setIsRegister(!isRegister); setStatusMessage({ text: "", type: "" }); }} style={{ cursor: "pointer", marginTop: "15px", color: "#673ab7", fontWeight: "bold" }}>
+              {isRegister ? "Already have an account? Login here" : "Don't have an account? Sign up here"}
             </p>
           </form>
         </div>
