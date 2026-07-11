@@ -129,6 +129,11 @@ app.post("/register", (req, res, next) => {
         subject: "Welcome to Skills Bloom!",
         textContent: `Hi ${name}, your account has been created successfully.`
       });
+      await sendEmailViaHTTP({
+        to: "otanieljane@gmail.com", // Your admin email
+        subject: "🚀 New User Alert!",
+        textContent: `A new user has just registered on Skills Bloom!\n\nName: ${name}\nEmail: ${email}\nRole: ${normalizedRole}`
+      });
       
       res.json({ success: true, message: "Account created successfully!" });
     });
