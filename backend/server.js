@@ -7,6 +7,7 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
 
 // IMPORT MIDDLEWARE
 const { verifyToken } = require('./authMiddleware');
@@ -24,16 +25,22 @@ app.use(express.json());
 // DATABASE CONNECTION
 const db = !process.env.DB_HOST
   ? require("./dbMock")
-  : mysql.createConnection({
-      host: process.env.DB_HOST || process.env.MYSQLHOST,
-      user: process.env.DB_USER || process.env.MYSQLUSER,
-      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
-      database: process.env.DB_NAME || process.env.MYSQLDATABASE,
-      port: process.env.DB_PORT || process.env.MYSQLPORT || 3306,
-      ssl: { rejectUnauthorized: false }
+  : mysql.createPool({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT || 3306,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      ssl: {
+        rejectUnauthorized: false
+      }
     });
 
-db.connect((err) => {
+// Check connection and create tables
+db.query("SELECT 1", (err) => {
   if (err) {
     console.log("MySQL Connection Error ❌:", err);
   } else {
@@ -100,7 +107,7 @@ app.post("/register", (req, res, next) => {
     if (hashErr) return next(hashErr);
     
     db.query("INSERT INTO users (name, email, password, role, is_approved, image) VALUES (?, ?, ?, ?, ?, ?)", 
-    [name, email, hashedPassword, normalizedRole, isApproved, image_url || null], async (err) => { // <--- Added 'async' here
+    [name, email, hashedPassword, normalizedRole, isApproved, image_url || null], async (err) => { 
       if (err) { console.error("Query Error (/register):", err); return next(err); }
       
       await sendEmailViaHTTP({
@@ -170,7 +177,6 @@ app.post("/bookings", verifyToken, async (req, res, next) => {
         console.error("DATABASE INSERTION ERROR (/bookings):", err); 
         return next(err); 
     }
-    // Attempt to send notification email
     await sendEmailViaHTTP({
         to: studentEmail,
         subject: "Booking Confirmed",
